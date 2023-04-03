@@ -1,0 +1,58 @@
+{
+    "name": "DeiT_Ti16",
+    "n_gpu": 1,
+
+    "arch": {
+        "type": "DeiT_Ti16",
+        "args": {}
+    },
+    "data_loader": {
+        "type": "IMNETDataLoader",
+        "args":{
+            "data_dir": "data/imagenet",
+            "batch_size": 16,
+            "num_workers": 2,
+            "pin_memory": true,
+            "transform_config": {
+                "input_size": 224,
+                "color_jitter": 0.4,
+                "aa": "rand-m9-mstd0.5-inc1",
+                "train_interpolation": "bicubic",
+                "reprob": 0.25,
+                "remode": "pixel",
+                "recount": 1
+            }
+        }
+    },
+    "optimizer": {
+        "type": "AdamW",
+        "args":{
+            "lr": 0.001,
+            "weight_decay": 0.05,
+            "amsgrad": true
+        }
+    },
+    "loss": "ce_loss",
+    "metrics": [
+        "accuracy", "top_k_acc"
+    ],
+    "lr_scheduler": {
+        "type": "StepLR",
+        "args": {
+            "step_size": 50,
+            "gamma": 0.1
+        }
+    },
+    "trainer": {
+        "epochs": 50,
+
+        "save_dir": "saved/",
+        "save_period": 5,
+        "verbosity": 2,
+        
+        "monitor": "min val_loss",
+        "early_stop": 10,
+
+        "tensorboard": true
+    }
+}

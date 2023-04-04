@@ -30,10 +30,10 @@ class IMNETDataLoader(DataLoader):
         self.train_dataset = datasets.ImageFolder(self.train_dir, transform=self.train_transform)
         self.val_dataset = datasets.ImageFolder(self.val_dir, transform=self.val_transform)
 
-        self.train_sampler = RandomSampler(self.train_dataset)
-        self.valid_sampler = SequentialSampler(self.val_dataset)
-        #self.train_sampler = RandomSampler(self.train_dataset, num_samples=128)
-        #self.valid_sampler = RandomSampler(self.val_dataset, num_samples=128)
+        #self.train_sampler = RandomSampler(self.train_dataset)
+        #self.valid_sampler = SequentialSampler(self.val_dataset)
+        self.train_sampler = RandomSampler(self.train_dataset, num_samples=24)
+        self.valid_sampler = RandomSampler(self.val_dataset, num_samples=24)
 
         self.init_kwargs = {
             'batch_size': batch_size,

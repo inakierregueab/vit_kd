@@ -1,16 +1,16 @@
 {
-    "name": "DeiT_Ti16",
+    "name": "ViTB16",
     "n_gpu": 1,
 
     "arch": {
-        "type": "DeiT_Ti16",
+        "type": "ViTB16",
         "args": {}
     },
     "data_loader": {
         "type": "IMNETDataLoader",
         "args":{
             "data_dir": "data/imagenet",
-            "batch_size": 16,
+            "batch_size": 8,
             "num_workers": 2,
             "pin_memory": true,
             "transform_config": {
@@ -44,10 +44,10 @@
         }
     },
     "trainer": {
-        "epochs": 50,
+        "epochs": 2,
 
         "save_dir": "saved/",
-        "save_period": 5,
+        "save_period": 1,
         "verbosity": 2,
         
         "monitor": "min val_loss",

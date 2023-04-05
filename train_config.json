@@ -1,9 +1,9 @@
 {
-    "name": "ViTB16",
+    "name": "TandemTPS",
     "n_gpu": 1,
 
     "arch": {
-        "type": "ViTB16",
+        "type": "TandemTPS",
         "args": {}
     },
     "data_loader": {
@@ -35,9 +35,9 @@
     "loss": {
         "type": "DistillationLoss",
         "args": {
-            "distillation_type": "none",
-            "alpha": 0,
-            "tau": 1
+            "distillation_type": "soft",
+            "alpha": 0.5,
+            "tau": 2
         }
     },
     "metrics": [

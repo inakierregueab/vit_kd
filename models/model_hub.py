@@ -94,15 +94,15 @@ class Student_Ti16(VisionTransformer):
 class TandemTPS(nn.Module):
     def __init__(self):
         super().__init__()
-        self.teacher = Teacher_ViTB16(checkpoint_path='./../saved/models/ViTB16/0404_202607/model_best.pth')
+        self.teacher = Teacher_ViTB16(checkpoint_path='/Users/inaki-eab/Desktop/hupba/repos/vit_kd/saved/models/ViTB16/0405_090943/model_best.pth')
         self.proxy_student = ProxyStudent_S16()
 
     def forward(self, x):
         with torch.no_grad():
-            output_teacher, hidden_state = self.teacher(x)
+            t_out, t_hidden_state = self.teacher(x)
 
-        output = self.proxy_student(x, hidden_state)
-        return output, output_teacher
+        s_out = self.proxy_student(x, t_hidden_state)
+        return s_out, t_out
 
 
 

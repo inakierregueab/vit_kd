@@ -8,24 +8,23 @@ def ce_loss(output, target):
 
 # TODO: test it
 class DistillationLoss(nn.Module):
-    def __init__(
-            self,
-            base_criterion: nn.Module,
-            distillation_type: str,
-            alpha: float,
-            tau: float
-    ):
+    def __init__(self, base_criterion=F.cross_entropy, distillation_type='none', alpha=0, tau=1):
         super().__init__()
         self.base_criterion = base_criterion
-        assert distillation_type in ['soft', 'hard']
+        assert distillation_type in ['none', 'soft', 'hard']
         self.distillation_type = distillation_type
+        print(f'Distillation type is {distillation_type}')
+
         self.alpha = alpha
         self.tau = tau
 
-    def forward(self, output, target, teacher_output):
+    def forward(self, output, target, teacher_output=None):
         base_loss = self.base_criterion(output, target)
 
-        if self.distillation_type == 'soft':
+        if self.distillation_type == 'none':
+            return base_loss
+
+        elif self.distillation_type == 'soft':
             T = self.tau
             distill_loss = F.kl_div(
                 # Use LogSoftmax for numerical stability

@@ -32,7 +32,14 @@
             "amsgrad": true
         }
     },
-    "loss": "ce_loss",
+    "loss": {
+        "type": "DistillationLoss",
+        "args": {
+            "distillation_type": "none",
+            "alpha": 0,
+            "tau": 1
+        }
+    },
     "metrics": [
         "accuracy", "top_k_acc"
     ],

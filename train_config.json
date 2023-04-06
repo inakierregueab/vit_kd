@@ -25,7 +25,7 @@
         }
     },
     "mixup": {
-        "flag": false,
+        "flag": true,
         "args": {
             "mixup_alpha": 0.8,
             "cutmix_alpha": 1,

@@ -9,7 +9,7 @@
     "data_loader": {
         "type": "IMNETDataLoader",
         "args":{
-            "data_dir": "data/imagenet",
+            "data_dir": "./../data/imagenet",
             "batch_size": 8,
             "num_workers": 2,
             "pin_memory": true,

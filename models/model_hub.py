@@ -23,7 +23,14 @@ class Teacher_ViTB16(nn.Module):
         self.model = ViTB16(as_teacher=True)
 
         checkpoint_path = str(checkpoint_path)
-        checkpoint = torch.load(checkpoint_path)
+        # TODO: change map location to cuda if available of mps
+        if torch.cuda.is_available():
+            loc = 'cuda'
+        elif torch.backends.mps.is_available():
+            loc = 'mps'
+        else:
+            loc = 'cpu'
+        checkpoint = torch.load(checkpoint_path, map_location=loc)
 
         # Load architecture params from checkpoint.
         if checkpoint['config']['arch']['type'] != self.model.__class__.__name__:
@@ -94,7 +101,7 @@ class Student_Ti16(VisionTransformer):
 class TandemTPS(nn.Module):
     def __init__(self):
         super().__init__()
-        self.teacher = Teacher_ViTB16(checkpoint_path='/Users/inaki-eab/Desktop/hupba/repos/vit_kd/saved/models/ViTB16/0405_090943/model_best.pth')
+        self.teacher = Teacher_ViTB16(checkpoint_path='./../data/model_best.pth')
         self.proxy_student = ProxyStudent_S16()
 
     def forward(self, x):
@@ -103,6 +110,8 @@ class TandemTPS(nn.Module):
 
         s_out = self.proxy_student(x, t_hidden_state)
         return s_out, t_out
+
+# TODO: add TandemTS, Tandem PSS
 
 
 
@@ -124,7 +133,7 @@ if __name__ == "__main__":
     memory = torch.rand(bs, seq_length, t_hidden_dim)
 
     # Model checks
-    teacher = Teacher_ViTB16(checkpoint_path='./../saved/models/ViTB16/0404_202607/model_best.pth')
+    teacher = Teacher_ViTB16(checkpoint_path='./../../data/model_best.pth')
     out = teacher(x)
 
     # 1. Teacher outputs (cls_token, x)
@@ -143,6 +152,9 @@ if __name__ == "__main__":
     # 5. Tandem outputs both student and teacher correctly
     assert s_out.shape == (bs, num_classes)
     assert t_out.shape == (bs, num_classes)
+
+    # 6. Tandem trainable params are the same as proxy student
+    assert len([True for p in tandem.parameters() if p.requires_grad]) == len([True for p in tandem.proxy_student.parameters() if p.requires_grad])
 
 
 

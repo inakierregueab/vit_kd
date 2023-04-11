@@ -1,6 +1,9 @@
 import numpy as np
 import torch
+
 from torchvision.utils import make_grid
+from timm.data import Mixup
+
 from base import BaseTrainer
 from utils import inf_loop, MetricTracker
 
@@ -30,6 +33,8 @@ class Trainer(BaseTrainer):
         self.train_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.valid_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
 
+        self.mixup_fn = Mixup(**config['mixup']['args'])
+
     def _train_epoch(self, epoch):
         """
         Training logic for an epoch
@@ -41,6 +46,9 @@ class Trainer(BaseTrainer):
         self.train_metrics.reset()
         for batch_idx, (data, target) in enumerate(self.data_loader):
             data, target = data.to(self.device), target.to(self.device)
+
+            if self.config['mixup']['flag']:
+                data, target = self.mixup_fn(data, target)
 
             self.optimizer.zero_grad()
             output = self.model(data)
@@ -92,12 +100,11 @@ class Trainer(BaseTrainer):
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
                 self.valid_metrics.update('loss', loss.item())
                 for met in self.metric_ftns:
-                    self.valid_metrics.update(met.__name__, met(output, target))
+                    self.valid_metrics.update(met.__name__, met(output, target, is_logits=False))
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
         # add histogram of model parameters to the tensorboard
         for name, p in self.model.named_parameters():
-            # TODO: error when finishing validation when using tensorboard from pytorch
             self.writer.add_histogram(name, p, bins='auto')
         return self.valid_metrics.result()
 

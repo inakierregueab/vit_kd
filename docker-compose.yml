@@ -1,0 +1,16 @@
+version: '2'
+
+services:
+  pytorch:
+    tty: true
+    container_name: pytorch_local_test
+    build:
+        context: .
+        dockerfile: Dockerfile
+    ipc: host
+    ports:
+      - '8888:8888'
+    volumes:
+      - '.:/app'
+      - '/Users/inaki-eab/Desktop/hupba/repos/data:/data'
+    command: "python train.py"

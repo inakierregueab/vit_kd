@@ -1,16 +1,16 @@
 {
-    "name": "DeiT_Ti16",
+    "name": "TandemTPS",
     "n_gpu": 1,
 
     "arch": {
-        "type": "DeiT_Ti16",
+        "type": "TandemTPS",
         "args": {}
     },
     "data_loader": {
         "type": "IMNETDataLoader",
         "args":{
-            "data_dir": "data/imagenet",
-            "batch_size": 16,
+            "data_dir": "./../data/imagenet",
+            "batch_size": 8,
             "num_workers": 2,
             "pin_memory": true,
             "transform_config": {
@@ -24,6 +24,19 @@
             }
         }
     },
+    "mixup": {
+        "flag": true,
+        "args": {
+            "mixup_alpha": 0.8,
+            "cutmix_alpha": 1,
+            "cutmix_minmax": null,
+            "prob": 1.0,
+            "switch_prob": 0.5,
+            "mode": "batch",
+            "label_smoothing": 0.1,
+            "num_classes": 1000
+        }
+    },
     "optimizer": {
         "type": "AdamW",
         "args":{
@@ -32,7 +45,14 @@
             "amsgrad": true
         }
     },
-    "loss": "ce_loss",
+    "loss": {
+        "type": "DistillationLoss",
+        "args": {
+            "distillation_type": "soft",
+            "alpha": 0.5,
+            "tau": 2
+        }
+    },
     "metrics": [
         "accuracy", "top_k_acc"
     ],
@@ -44,10 +64,10 @@
         }
     },
     "trainer": {
-        "epochs": 50,
+        "epochs": 2,
 
         "save_dir": "saved/",
-        "save_period": 5,
+        "save_period": 1,
         "verbosity": 2,
         
         "monitor": "min val_loss",

@@ -332,7 +332,7 @@ if __name__ == "__main__":
         mlp_dim=1536,
         proxy=True
     )
-    out = proxy_student(x, memory)
+    out = proxy_student(x, out[1])
 
     # 4. Proxy student outputs a tensor of shape (bs, num_classes)
     assert out.shape == (bs, num_classes)

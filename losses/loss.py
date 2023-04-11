@@ -6,7 +6,7 @@ import torch.nn.functional as F
 def ce_loss(output, target):
     return F.cross_entropy(output, target)
 
-# TODO: test it
+
 class DistillationLoss(nn.Module):
     def __init__(self, base_criterion=F.cross_entropy, distillation_type='none', alpha=0, tau=1):
         super().__init__()

@@ -66,7 +66,6 @@ class IMNETDataLoader(DataLoader):
         t = []
         if resize_im:
             size = int((256/224)*transform_config['input_size'])
-            # TODO: define interpolation mode
             t.append(
                 transforms.Resize(size),  # to maintain same ratio w.r.t. 224 images
             )

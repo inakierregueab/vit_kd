@@ -48,7 +48,6 @@ class Trainer(BaseTrainer):
             data, target = data.to(self.device), target.to(self.device)
 
             if self.config['mixup']['flag']:
-                # TODO: mixup return probs not targets
                 data, target = self.mixup_fn(data, target)
 
             self.optimizer.zero_grad()
@@ -106,7 +105,6 @@ class Trainer(BaseTrainer):
 
         # add histogram of model parameters to the tensorboard
         for name, p in self.model.named_parameters():
-            # TODO: error when finishing validation when using tensorboard from pytorch
             self.writer.add_histogram(name, p, bins='auto')
         return self.valid_metrics.result()
 

@@ -1,7 +1,7 @@
 import os
 
 from torchvision import datasets, transforms
-from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
+from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, DistributedSampler
 from torch.utils.data.dataloader import default_collate
 
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
@@ -15,7 +15,8 @@ class IMNETDataLoader(DataLoader):
     def __init__(self,
                  data_dir,
                  batch_size,
-                 num_workers=1,
+                 is_distributed,
+                 num_workers=0,
                  transform_config=None,
                  collate_fn=default_collate,
                  pin_memory=True):
@@ -30,19 +31,31 @@ class IMNETDataLoader(DataLoader):
         self.train_dataset = datasets.ImageFolder(self.train_dir, transform=self.train_transform)
         self.val_dataset = datasets.ImageFolder(self.val_dir, transform=self.val_transform)
 
-        #self.train_sampler = RandomSampler(self.train_dataset)
-        #self.valid_sampler = SequentialSampler(self.val_dataset)
-        self.train_sampler = RandomSampler(self.train_dataset, num_samples=24)
-        self.valid_sampler = RandomSampler(self.val_dataset, num_samples=24)
+        if is_distributed:
+            self.train_sampler = DistributedSampler(self.train_dataset, num_replicas=world_size, rank=rank,
+                                                    shuffle=True, drop_last=False)
+            # TODO: add flag for distributed validation
+            if len(self.val_dataset) % world_size != 0:
+                print('Warning: Enabling distributed evaluation with an eval dataset not divisible by process number. '
+                      'This will slightly alter validation results as extra duplicate entries are added to achieve '
+                      'equal num of samples per-process.')
+            self.valid_sampler = DistributedSampler(self.val_dataset, num_replicas=world_size, rank=rank,
+                                                    shuffle=False, drop_last=False)
+        else:
+            #self.train_sampler = RandomSampler(self.train_dataset)
+            #self.valid_sampler = SequentialSampler(self.val_dataset)
+            self.train_sampler = RandomSampler(self.train_dataset, num_samples=24)
+            self.valid_sampler = RandomSampler(self.val_dataset, num_samples=24)
 
+        # TODO: use persistent workers?
         self.init_kwargs = {
             'batch_size': batch_size,
             'collate_fn': collate_fn,
-            'num_workers': num_workers,
-            'pin_memory': pin_memory,
+            'num_workers': 0 if is_distributed else num_workers,
+            'pin_memory': False if is_distributed else pin_memory,
         }
 
-        super().__init__(dataset=self.train_dataset,sampler=self.train_sampler, drop_last=True, **self.init_kwargs)
+        super().__init__(dataset=self.train_dataset,sampler=self.train_sampler, drop_last=False, **self.init_kwargs)
 
     def get_transforms(self, transform_config, is_train):
         resize_im = transform_config['input_size'] > 32

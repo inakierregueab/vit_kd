@@ -1,5 +1,4 @@
-FROM bitnami/pytorch@sha256:148693c3a732e8b4da244fdb885bd9dfd66522e122a1ad73e4a1b62185e9c26f
-LABEL authors="inaki-eab"
+FROM nvcr.io/nvidia/pytorch:23.03-py3
 
 COPY requirements.txt /app/requirements.txt
 WORKDIR /app

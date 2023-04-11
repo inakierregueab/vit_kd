@@ -1,16 +1,19 @@
-version: '2'
+version: '3'
 
 services:
-  pytorch:
-    tty: true
-    container_name: pytorch_local_test
+  pytorch-ngc:
+    container_name: pytorch-ngc
+    image: nvdivia-pytorch-vitkd
     build:
         context: .
         dockerfile: Dockerfile
     ipc: host
+    tty: true
     ports:
       - '8888:8888'
     volumes:
       - '.:/app'
       - '/Users/inaki-eab/Desktop/hupba/repos/data:/data'
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all # or 0,1,2,3
     command: "python train.py"

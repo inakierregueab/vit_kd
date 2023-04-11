@@ -16,6 +16,8 @@ class IMNETDataLoader(DataLoader):
                  data_dir,
                  batch_size,
                  is_distributed,
+                 rank,
+                 world_size,
                  num_workers=0,
                  transform_config=None,
                  collate_fn=default_collate,

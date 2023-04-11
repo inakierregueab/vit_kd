@@ -55,7 +55,8 @@ def main_worker_function(rank, world_size, is_distributed, config):
         device = prepare_device(config['gpu_list'])
 
     # setup data_loader instances
-    data_loader = config.init_obj('data_loader', module_data, is_distributed=is_distributed)
+    data_loader = config.init_obj('data_loader', module_data,
+                                  is_distributed=is_distributed, rank=rank, world_size=world_size)
     valid_data_loader = data_loader.split_validation()
 
     # build model architecture

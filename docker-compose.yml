@@ -2,18 +2,24 @@ version: '3'
 
 services:
   pytorch-ngc:
-    container_name: pytorch-ngc
+    container_name: inaki_pytorch
     image: nvdivia-pytorch-vitkd
     build:
         context: .
         dockerfile: Dockerfile
     ipc: host
     tty: true
+    ulimits:
+      memlock: -1
+      stack: 67108864
     ports:
       - '8888:8888'
     volumes:
       - '.:/app'
-      - '/Users/inaki-eab/Desktop/hupba/repos/data:/data'
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all # or 0,1,2,3
+      - '/home-net/ierregue/research/data:/data'
     command: "python train.py"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [ 'gpu' ]

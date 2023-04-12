@@ -1,6 +1,6 @@
 {
     "name": "TandemTPS",
-    "gpu_list": [0,1],
+    "gpu_list": [0],
 
     "arch": {
         "type": "TandemTPS",

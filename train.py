@@ -33,7 +33,7 @@ def main(config):
         dev_ids = ["cuda:{0}".format(x) for x in config['gpu_list']]
         print("Using DistributedDataParallel on these devices: {}".format(dev_ids))
 
-        # TODO: fix printing and model state dict when ddp is used
+        # TODO: fix printing, metrics and model state dict when ddp is used
         torch.multiprocessing.spawn(main_worker_function, nprocs=n_gpus, args=(n_gpus, is_distributed, config))
 
     else:
@@ -79,6 +79,8 @@ def main_worker_function(rank, world_size, is_distributed, config):
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
 
     trainer = Trainer(model, criterion, metrics, optimizer,
+                      is_distributed=is_distributed,
+                      rank=rank,
                       config=config,
                       device=device,
                       data_loader=data_loader,

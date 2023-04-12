@@ -13,10 +13,12 @@ class Trainer(BaseTrainer):
     Trainer class
     """
     def __init__(self, model, criterion, metric_ftns, optimizer, config, device,
-                 data_loader, valid_data_loader=None, lr_scheduler=None, len_epoch=None):
-        super().__init__(model, criterion, metric_ftns, optimizer, config)
+                 data_loader, is_distributed, rank, valid_data_loader=None, lr_scheduler=None, len_epoch=None):
+        super().__init__(model, criterion, metric_ftns, optimizer, config, rank)
         self.config = config
         self.device = device
+        self.is_distributed = is_distributed
+        self.rank = rank
         self.data_loader = data_loader
         if len_epoch is None:
             # epoch-based training
@@ -44,6 +46,9 @@ class Trainer(BaseTrainer):
         """
         self.model.train()
         self.train_metrics.reset()
+        if self.is_distributed:
+            self.data_loader.sampler.set_epoch(epoch)
+
         for batch_idx, (data, target) in enumerate(self.data_loader):
             data, target = data.to(self.device), target.to(self.device)
 
@@ -61,7 +66,7 @@ class Trainer(BaseTrainer):
             for met in self.metric_ftns:
                 self.train_metrics.update(met.__name__, met(output, target))
 
-            if batch_idx % self.log_step == 0:
+            if self.rank == 0 and batch_idx % self.log_step == 0:
                 self.logger.debug('Train Epoch: {} {} Loss: {:.6f}'.format(
                     epoch,
                     self._progress(batch_idx),
@@ -89,6 +94,10 @@ class Trainer(BaseTrainer):
         """
         self.model.eval()
         self.valid_metrics.reset()
+        # TODO: us is_valid_distributed flag
+        if self.is_distributed:
+            self.valid_data_loader.sampler.set_epoch(epoch)
+
         print("Validating...")
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):

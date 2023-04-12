@@ -7,6 +7,8 @@ from torch.utils.data.dataloader import default_collate
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.data import create_transform
 
+from data_loader.ra_sampler import RASampler
+
 
 class IMNETDataLoader(DataLoader):
     """
@@ -34,6 +36,8 @@ class IMNETDataLoader(DataLoader):
         self.val_dataset = datasets.ImageFolder(self.val_dir, transform=self.val_transform)
 
         if is_distributed:
+            # TODO: test with RepeatedAugmentationSampler
+            # self.train_sampler = RASampler(self.train_dataset, num_replicas=world_size, rank=rank, shuffle=True)
             self.train_sampler = DistributedSampler(self.train_dataset, num_replicas=world_size, rank=rank,
                                                     shuffle=True, drop_last=False)
             # TODO: add flag for distributed validation

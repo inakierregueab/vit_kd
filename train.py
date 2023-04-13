@@ -43,6 +43,10 @@ def main(config):
 
 def main_worker_function(rank, world_size, is_distributed, config):
     logger = config.get_logger('train')
+    if rank == 0:
+        logger.setLevel('INFO')
+    else:
+        logger.setLevel('WARNING')
 
     if is_distributed:
         print("rank: ", rank)
@@ -65,11 +69,11 @@ def main_worker_function(rank, world_size, is_distributed, config):
     model = model.to(device)
     if is_distributed:
         # If BatchNorm is used, convert it to SyncBatchNorm
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[device], find_unused_parameters=True)
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[device])
 
     # get function handles of loss and metrics
     # TODO: criterion to device?
-    criterion = config.init_obj('loss', module_loss)
+    criterion = config.init_obj('loss', module_loss, rank=rank)
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler

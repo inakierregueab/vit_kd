@@ -1,7 +1,8 @@
 import os
+import torch
 
 from torchvision import datasets, transforms
-from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, DistributedSampler
+from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, DistributedSampler, Subset
 from torch.utils.data.dataloader import default_collate
 
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
@@ -34,6 +35,11 @@ class IMNETDataLoader(DataLoader):
 
         self.train_dataset = datasets.ImageFolder(self.train_dir, transform=self.train_transform)
         self.val_dataset = datasets.ImageFolder(self.val_dir, transform=self.val_transform)
+
+        # Subset for debugging
+        indices = torch.arange(1000)
+        self.train_dataset = Subset(self.train_dataset, indices)
+        self.val_dataset = Subset(self.train_dataset, indices)
 
         if is_distributed:
             # TODO: test with RepeatedAugmentationSampler

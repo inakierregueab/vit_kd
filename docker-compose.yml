@@ -3,7 +3,7 @@ version: '3'
 services:
   pytorch-ngc:
     container_name: inaki_pytorch
-    image: nvdivia-pytorch-vitkd
+    image: nvdivia-pytorch-vitkd:v7
     build:
         context: .
         dockerfile: Dockerfile
@@ -14,10 +14,11 @@ services:
       stack: 67108864
     ports:
       - '8888:8888'
+      - '12355:12355'
     volumes:
       - '.:/app'
       - '/home-net/ierregue/research/data:/data'
-    command: "python train.py"
+    #command: bash -c "python train.py"
     deploy:
       resources:
         reservations:

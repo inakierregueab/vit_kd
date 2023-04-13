@@ -67,9 +67,11 @@ class BaseTrainer:
             log = {'epoch': epoch}
             log.update(result)
 
+            # TODO: log double values when 2 gpus are used, all reduce?
             # print logged informations to the screen
             for key, value in log.items():
                 self.logger.info('    {:15s}: {}'.format(str(key), value))
+                print('    {:15s}: {}'.format(str(key), value))
 
             # evaluate model performance according to configured metric, save best checkpoint as model_best
             best = False

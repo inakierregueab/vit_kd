@@ -1,9 +1,9 @@
 {
-    "name": "TandemTPS",
-    "gpu_list": [0],
+    "name": "ViTB16",
+    "gpu_list": [0,1],
 
     "arch": {
-        "type": "TandemTPS",
+        "type": "ViTB16",
         "args": {}
     },
     "data_loader": {
@@ -48,7 +48,7 @@
     "loss": {
         "type": "DistillationLoss",
         "args": {
-            "distillation_type": "soft",
+            "distillation_type": "none",
             "alpha": 0.5,
             "tau": 2
         }
@@ -73,6 +73,6 @@
         "monitor": "min val_loss",
         "early_stop": 10,
 
-        "tensorboard": true
+        "tensorboard": false
     }
 }

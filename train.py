@@ -42,15 +42,11 @@ def main(config):
 
 
 def main_worker_function(rank, world_size, is_distributed, config):
-    logger = config.get_logger('train')
+    # TODO: fix printing and logging
     if rank == 0:
-        logger.setLevel('INFO')
-    else:
-        logger.setLevel('WARNING')
+        logger = config.get_logger('train')
 
     if is_distributed:
-        print("rank: ", rank)
-        # TODO: just as an string? not device=torch.device(rank)?
         device = config['gpu_list'][rank]
         print("Running main worker function on device: {}".format(device))
         torch.distributed.init_process_group('nccl', init_method='env://', world_size=world_size, rank=rank)
@@ -65,7 +61,8 @@ def main_worker_function(rank, world_size, is_distributed, config):
 
     # build model architecture
     model = config.init_obj('arch', module_arch)
-    logger.info(model)
+    if rank == 0:
+        logger.info(model)
     model = model.to(device)
     if is_distributed:
         # If BatchNorm is used, convert it to SyncBatchNorm
@@ -92,6 +89,9 @@ def main_worker_function(rank, world_size, is_distributed, config):
                       lr_scheduler=lr_scheduler)
 
     trainer.train()
+
+    if is_distributed:
+        torch.distributed.destroy_process_group()
 
 
 if __name__ == '__main__':

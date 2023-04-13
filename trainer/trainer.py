@@ -71,6 +71,13 @@ class Trainer(BaseTrainer):
                     epoch,
                     self._progress(batch_idx),
                     loss.item()))
+                print(
+                    'Train Epoch: {} {} Loss: {:.6f}'.format(
+                        epoch,
+                        self._progress(batch_idx),
+                        loss.item()
+                    )
+                )
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
             if batch_idx == self.len_epoch:
@@ -98,7 +105,8 @@ class Trainer(BaseTrainer):
         if self.is_distributed:
             self.valid_data_loader.sampler.set_epoch(epoch)
 
-        print("Validating...")
+        if self.rank == 0:
+            print("Validating...")
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
                 data, target = data.to(self.device), target.to(self.device)

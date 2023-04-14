@@ -8,9 +8,9 @@ class BaseTrainer:
     """
     Base class for all trainers
     """
-    def __init__(self, model, criterion, metric_ftns, optimizer, config, rank, is_distributed):
+    def __init__(self, model, criterion, metric_ftns, optimizer, config, rank):
         self.config = config
-        self.logger = config.get_logger('trainer', verbosity=config['trainer']['verbosity'], is_distributed=is_distributed)
+        self.logger = config.get_logger('trainer', verbosity=config['trainer']['verbosity'])
 
         self.model = model
         self.criterion = criterion

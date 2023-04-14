@@ -67,6 +67,7 @@ def main_worker_function(rank, world_size, is_distributed, config):
     if is_distributed:
         # If BatchNorm is used, convert it to SyncBatchNorm
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[device])
+    # TODO: torch.compile() for faster inference HERE, are savable?
 
     # get function handles of loss and metrics
     # TODO: criterion to device?

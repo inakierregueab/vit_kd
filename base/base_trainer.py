@@ -8,9 +8,9 @@ class BaseTrainer:
     """
     Base class for all trainers
     """
-    def __init__(self, model, criterion, metric_ftns, optimizer, config, rank):
+    def __init__(self, model, criterion, metric_ftns, optimizer, config, rank, is_distributed):
         self.config = config
-        self.logger = config.get_logger('trainer', config['trainer']['verbosity'])
+        self.logger = config.get_logger('trainer', verbosity=config['trainer']['verbosity'], is_distributed=is_distributed)
 
         self.model = model
         self.criterion = criterion
@@ -63,15 +63,16 @@ class BaseTrainer:
         for epoch in range(self.start_epoch, self.epochs + 1):
             result = self._train_epoch(epoch)
 
+            # TODO: all reduce and only rank one saves input
             # save logged informations into log dict
             log = {'epoch': epoch}
             log.update(result)
 
             # TODO: log double values when 2 gpus are used, all reduce?
             # print logged informations to the screen
-            for key, value in log.items():
-                self.logger.info('    {:15s}: {}'.format(str(key), value))
-                print('    {:15s}: {}'.format(str(key), value))
+            if self.rank == 0:
+                for key, value in log.items():
+                    self.logger.info('    {:15s}: {}'.format(str(key), value))
 
             # evaluate model performance according to configured metric, save best checkpoint as model_best
             best = False

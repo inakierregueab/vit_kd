@@ -44,7 +44,7 @@ def main(config):
 def main_worker_function(rank, world_size, is_distributed, config):
     # TODO: fix printing and logging
     if rank == 0:
-        logger = config.get_logger('train')
+        logger = config.get_logger('train', is_distributed=is_distributed)
 
     if is_distributed:
         device = config['gpu_list'][rank]

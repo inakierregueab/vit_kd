@@ -14,7 +14,7 @@ class Trainer(BaseTrainer):
     """
     def __init__(self, model, criterion, metric_ftns, optimizer, config, device,
                  data_loader, is_distributed, rank, valid_data_loader=None, lr_scheduler=None, len_epoch=None):
-        super().__init__(model, criterion, metric_ftns, optimizer, config, rank)
+        super().__init__(model, criterion, metric_ftns, optimizer, config, rank, is_distributed=is_distributed)
         self.config = config
         self.device = device
         self.is_distributed = is_distributed
@@ -71,13 +71,6 @@ class Trainer(BaseTrainer):
                     epoch,
                     self._progress(batch_idx),
                     loss.item()))
-                print(
-                    'Train Epoch: {} {} Loss: {:.6f}'.format(
-                        epoch,
-                        self._progress(batch_idx),
-                        loss.item()
-                    )
-                )
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
             if batch_idx == self.len_epoch:

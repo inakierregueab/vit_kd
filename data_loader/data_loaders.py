@@ -56,8 +56,8 @@ class IMNETDataLoader(DataLoader):
         else:
             #self.train_sampler = RandomSampler(self.train_dataset)
             #self.valid_sampler = SequentialSampler(self.val_dataset)
-            self.train_sampler = RandomSampler(self.train_dataset, num_samples=24)
-            self.valid_sampler = RandomSampler(self.val_dataset, num_samples=24)
+            self.train_sampler = RandomSampler(self.train_dataset, num_samples=300)
+            self.valid_sampler = RandomSampler(self.val_dataset, num_samples=300)
 
         # TODO: use persistent workers?
         self.init_kwargs = {

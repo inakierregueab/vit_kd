@@ -42,9 +42,6 @@ def main(config):
 
 
 def main_worker_function(rank, world_size, is_distributed, config):
-    # TODO: fix printing and logging
-    if rank == 0:
-        logger = config.get_logger('train', is_distributed=is_distributed)
 
     if is_distributed:
         device = config['gpu_list'][rank]
@@ -62,6 +59,7 @@ def main_worker_function(rank, world_size, is_distributed, config):
     # build model architecture
     model = config.init_obj('arch', module_arch)
     if rank == 0:
+        logger = config.get_logger('train', is_distributed=is_distributed)
         logger.info(model)
     model = model.to(device)
     if is_distributed:

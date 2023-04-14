@@ -10,7 +10,7 @@ import models.metric as module_metric
 import models.model_hub as module_arch
 from parse_config import ConfigParser
 from trainer import Trainer
-from utils import prepare_device
+from utils import prepare_device, build_lr_scheduler
 
 
 def main(config):
@@ -75,9 +75,8 @@ def main_worker_function(rank, world_size, is_distributed, config):
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
-    # TODO: use timm create_optimizer, create_scheduler? as in DeiT
     optimizer = config.init_obj('optimizer', torch.optim, trainable_params)
-    lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
+    lr_scheduler = build_lr_scheduler(config, optimizer)
 
     trainer = Trainer(model, criterion, metrics, optimizer,
                       is_distributed=is_distributed,

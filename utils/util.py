@@ -5,6 +5,10 @@ from pathlib import Path
 from itertools import repeat
 from collections import OrderedDict
 
+from timm.scheduler import create_scheduler
+
+from utils.param_store import ParameterStore
+
 
 def ensure_dir(dirname):
     dirname = Path(dirname)
@@ -42,6 +46,13 @@ def prepare_device(gpu_list):
         device = torch.device('cpu')
 
     return device
+
+def build_lr_scheduler(config, optimizer):
+    lr_config = config['lr_scheduler']
+    lr_config['epochs'] = config['trainer']['epochs']
+    lr_parsed_config = ParameterStore(lr_config)
+    lr_scheduler, _ = create_scheduler(lr_parsed_config, optimizer)
+    return lr_scheduler
 
 
 class MetricTracker:

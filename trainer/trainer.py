@@ -3,6 +3,7 @@ import torch
 
 from torchvision.utils import make_grid
 from timm.data import Mixup
+from time import time
 
 from base import BaseTrainer
 from utils import inf_loop, MetricTracker
@@ -47,6 +48,10 @@ class Trainer(BaseTrainer):
         """
         self.model.train()
         self.train_metrics.reset()
+
+        start_time = time()
+        iteration_time = start_time
+
         if self.is_distributed:
             self.data_loader.sampler.set_epoch(epoch)
 
@@ -73,12 +78,16 @@ class Trainer(BaseTrainer):
                     self.train_metrics.update(met.__name__, met(output/self.world_size, target))
 
                 if batch_idx % self.log_step == 0:
-                    self.logger.info('Train Epoch: {} {} Loss: {:.6f}'.format(
+                    previous_iteration_time = iteration_time
+                    iteration_time = time()
+                    self.logger.info('Train Epoch: {} {} Loss: {:.6f} - Elapsed Time: {:.3f} - Iteration Time: {:.3f}'.format(
                         epoch,
                         self._progress(batch_idx),
-                        loss.item()/self.world_size))
-                    # TODO: don't want image
-                    self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+                        loss.item()/self.world_size,
+                        iteration_time - start_time,
+                        iteration_time - previous_iteration_time))
+
+                    # self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
             if batch_idx == self.len_epoch:
                 break
@@ -127,8 +136,8 @@ class Trainer(BaseTrainer):
                     self.valid_metrics.update('loss', loss.item()/self.world_size)
                     for met in self.metric_ftns:
                         self.valid_metrics.update(met.__name__, met(output/self.world_size, target, is_logits=False))
-                    # TODO: don't want image
-                    self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+
+                    # self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
         # TODO: what are we saving down here?
         if self.rank == 0:
             # add histogram of model parameters to the tensorboard

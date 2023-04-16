@@ -14,7 +14,7 @@ services:
       memlock: -1
       stack: 67108864
     ports:
-      - '8888:8888'
+      - '6006:6006'
       - '12355:12355'
     volumes:
       - '.:/app'

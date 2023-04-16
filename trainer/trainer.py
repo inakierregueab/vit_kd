@@ -19,6 +19,7 @@ class Trainer(BaseTrainer):
         self.device = device
         self.is_distributed = is_distributed
         self.rank = rank
+        self.world_size = torch.distributed.get_world_size() if is_distributed else 1
         self.data_loader = data_loader
         if len_epoch is None:
             # epoch-based training
@@ -61,30 +62,39 @@ class Trainer(BaseTrainer):
             loss.backward()
             self.optimizer.step()
 
-            self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
-            self.train_metrics.update('loss', loss.item())
-            for met in self.metric_ftns:
-                self.train_metrics.update(met.__name__, met(output, target))
+            if self.is_distributed:
+                torch.distributed.reduce(loss, dst=0, op=torch.distributed.ReduceOp.SUM)
+                torch.distributed.reduce(output, dst=0, op=torch.distributed.ReduceOp.SUM)
 
-            if self.rank == 0 and batch_idx % self.log_step == 0:
-                self.logger.info('Train Epoch: {} {} Loss: {:.6f}'.format(
-                    epoch,
-                    self._progress(batch_idx),
-                    loss.item()))
-                self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+            if self.rank == 0:
+                self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
+                self.train_metrics.update('loss', loss.item()/self.world_size)
+                for met in self.metric_ftns:
+                    self.train_metrics.update(met.__name__, met(output/self.world_size, target))
+
+                if batch_idx % self.log_step == 0:
+                    self.logger.info('Train Epoch: {} {} Loss: {:.6f}'.format(
+                        epoch,
+                        self._progress(batch_idx),
+                        loss.item()/self.world_size))
+                    # TODO: don't want image
+                    self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
             if batch_idx == self.len_epoch:
                 break
-        log = self.train_metrics.result()
+
+        if self.rank == 0:
+            log = self.train_metrics.result()
 
         if self.do_validation:
             val_log = self._valid_epoch(epoch)
-            log.update(**{'val_'+k : v for k, v in val_log.items()})
+            if self.rank == 0:
+                log.update(**{'val_'+k : v for k, v in val_log.items()})
 
         if self.lr_scheduler is not None:
             # timm scheduler needs epoch
             self.lr_scheduler.step(epoch)
-        return log
+        return log if self.rank == 0 else None
 
     def _valid_epoch(self, epoch):
         """
@@ -108,16 +118,23 @@ class Trainer(BaseTrainer):
                 output = self.model(data)
                 loss = self.criterion(output, target)
 
-                self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
-                self.valid_metrics.update('loss', loss.item())
-                for met in self.metric_ftns:
-                    self.valid_metrics.update(met.__name__, met(output, target, is_logits=False))
-                self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+                if self.is_distributed:
+                    torch.distributed.reduce(loss, dst=0, op=torch.distributed.ReduceOp.SUM)
+                    torch.distributed.reduce(output, dst=0, op=torch.distributed.ReduceOp.SUM)
 
-        # add histogram of model parameters to the tensorboard
-        for name, p in self.model.named_parameters():
-            self.writer.add_histogram(name, p, bins='auto')
-        return self.valid_metrics.result()
+                if self.rank == 0:
+                    self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
+                    self.valid_metrics.update('loss', loss.item()/self.world_size)
+                    for met in self.metric_ftns:
+                        self.valid_metrics.update(met.__name__, met(output/self.world_size, target, is_logits=False))
+                    # TODO: don't want image
+                    self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+        # TODO: what are we saving down here?
+        if self.rank == 0:
+            # add histogram of model parameters to the tensorboard
+            for name, p in self.model.named_parameters():
+                self.writer.add_histogram(name, p, bins='auto')
+        return self.valid_metrics.result() if self.rank == 0 else None
 
     def _progress(self, batch_idx):
         base = '[{}/{} ({:.0f}%)]'

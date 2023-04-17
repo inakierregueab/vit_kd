@@ -99,7 +99,8 @@ class BaseTrainer:
                     self._save_checkpoint(epoch, save_best=best)
 
             # TODO: makes sense? iteration time gets small improvement
-            torch.distributed.barrier()
+            if torch.distributed.is_initialized():
+                torch.distributed.barrier()
 
     def _save_checkpoint(self, epoch, save_best=False):
         """

@@ -43,9 +43,9 @@ class IMNETDataLoader(DataLoader):
 
         if is_distributed:
             # TODO: test with RepeatedAugmentationSampler
-            # self.train_sampler = RASampler(self.train_dataset, num_replicas=world_size, rank=rank, shuffle=True)
-            self.train_sampler = DistributedSampler(self.train_dataset, num_replicas=world_size, rank=rank,
-                                                    shuffle=True, drop_last=False)
+            self.train_sampler = RASampler(self.train_dataset, num_replicas=world_size, rank=rank, shuffle=True)
+            #self.train_sampler = DistributedSampler(self.train_dataset, num_replicas=world_size, rank=rank,
+            #                                        shuffle=True, drop_last=False)
             # TODO: add flag for distributed validation
             if len(self.val_dataset) % world_size != 0:
                 print('Warning: Enabling distributed evaluation with an eval dataset not divisible by process number. '

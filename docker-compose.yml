@@ -19,9 +19,9 @@ services:
       - '12355:12355'
     volumes:
       - '.:/app'
-      - '/home-net/ierregue/research/data:/data'
+      - '/data-fast/127-data2/ierregue/ImageNet-1k:/data'
       - '/data-slow/hupba/ierregue/research/vit_kd/saved:/saved'
-    #command: bash -c "python train.py"
+    command: bash -c "python train.py"
     deploy:
       resources:
         reservations:

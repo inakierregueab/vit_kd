@@ -37,9 +37,10 @@ class IMNETDataLoader(DataLoader):
         self.val_dataset = datasets.ImageFolder(self.val_dir, transform=self.val_transform)
 
         # Subset for debugging
-        indices = torch.arange(1000)
-        self.train_dataset = Subset(self.train_dataset, indices)
-        self.val_dataset = Subset(self.train_dataset, indices)
+        train_indices = torch.arange(1000)
+        val_indices = torch.arange(100)
+        self.train_dataset = Subset(self.train_dataset, train_indices)
+        self.val_dataset = Subset(self.train_dataset, val_indices)
 
         if is_distributed:
             # TODO: test with RepeatedAugmentationSampler

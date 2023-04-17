@@ -1,16 +1,16 @@
 {
-    "name": "ViTB16",
+    "name": "Student_Ti16",
     "gpu_list": [0],
 
     "arch": {
-        "type": "ViTB16",
+        "type": "Student_Ti16",
         "args": {}
     },
     "data_loader": {
         "type": "IMNETDataLoader",
         "args":{
-            "data_dir": "./../data/imagenet",
-            "batch_size": 16,
+            "data_dir": "./../data/",
+            "batch_size": 128,
             "num_workers": 2,
             "pin_memory": true,
             "transform_config": {
@@ -64,14 +64,14 @@
         "warmup_epochs": 5
     },
     "trainer": {
-        "epochs": 2,
+        "epochs": 300,
 
         "save_dir": "./../saved/",
-        "save_period": 1,
+        "save_period": 25,
         "verbosity": 2,
         
         "monitor": "min val_loss",
-        "early_stop": 10,
+        "early_stop": 100,
 
         "tensorboard": false
     }

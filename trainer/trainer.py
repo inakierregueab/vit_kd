@@ -114,6 +114,9 @@ class Trainer(BaseTrainer):
         """
         self.model.eval()
         self.valid_metrics.reset()
+
+        start_time = time()
+
         # TODO: us is_valid_distributed flag
         if self.is_distributed:
             self.valid_data_loader.sampler.set_epoch(epoch)
@@ -139,10 +142,12 @@ class Trainer(BaseTrainer):
 
                     # self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
         # TODO: what are we saving down here?
-        if self.rank == 0:
+        """if self.rank == 0:
             # add histogram of model parameters to the tensorboard
             for name, p in self.model.named_parameters():
-                self.writer.add_histogram(name, p, bins='auto')
+                self.writer.add_histogram(name, p, bins='auto')"""
+        if self.rank == 0:
+            print("Validation Elapsed Time: {:.3f}".format(time() - start_time))
         return self.valid_metrics.result() if self.rank == 0 else None
 
     def _progress(self, batch_idx):

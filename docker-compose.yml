@@ -9,6 +9,7 @@ services:
         context: .
         dockerfile: Dockerfile
     ipc: host
+    network_mode: host
     tty: true
     ulimits:
       memlock: -1

@@ -1,6 +1,6 @@
 {
     "name": "Student_Ti16",
-    "gpu_list": [0],
+    "gpu_list": [0,1],
 
     "arch": {
         "type": "Student_Ti16",

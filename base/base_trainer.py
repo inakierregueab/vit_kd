@@ -8,7 +8,7 @@ class BaseTrainer:
     """
     Base class for all trainers
     """
-    def __init__(self, model, criterion, metric_ftns, optimizer, config, rank):
+    def __init__(self, model, criterion, metric_ftns, optimizer, config, rank, is_distributed):
         self.config = config
         self.logger = config.get_logger('trainer', verbosity=config['trainer']['verbosity'])
 
@@ -17,6 +17,7 @@ class BaseTrainer:
         self.metric_ftns = metric_ftns
         self.optimizer = optimizer
         self.rank = rank
+        self.is_distributed = is_distributed
 
         cfg_trainer = config['trainer']
         self.epochs = cfg_trainer['epochs']
@@ -40,8 +41,11 @@ class BaseTrainer:
 
         self.checkpoint_dir = config.save_dir
 
-        # setup visualization writer instance                
-        self.writer = TensorboardWriter(config.log_dir, self.logger, cfg_trainer['tensorboard'])
+        # setup visualization writer instance
+        if self.rank == 0:
+            self.writer = TensorboardWriter(config.log_dir, self.logger, cfg_trainer['tensorboard'])
+        else:
+            self.writer = None
 
         if config.resume is not None:
             self._resume_checkpoint(config.resume)
@@ -99,7 +103,7 @@ class BaseTrainer:
                     self._save_checkpoint(epoch, save_best=best)
 
             # TODO: makes sense? iteration time gets small improvement
-            if torch.distributed.is_available():
+            if self.is_distributed:
                 torch.distributed.barrier()
 
     def _save_checkpoint(self, epoch, save_best=False):

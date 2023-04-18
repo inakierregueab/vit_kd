@@ -94,7 +94,7 @@ def main_worker_function(rank, world_size, is_distributed, config):
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='PyTorch Template')
-    args.add_argument('-c', '--config', default='train_ddp_config.json', type=str,
+    args.add_argument('-c', '--config', default='train_config.json', type=str,
                       help='config file path (default: None)')
     args.add_argument('-r', '--resume', default=None, type=str,
                       help='path to latest checkpoint (default: None)')

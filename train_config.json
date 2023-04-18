@@ -1,18 +1,19 @@
 {
-    "name": "TandemTPS",
-    "n_gpu": 1,
+    "name": "Student_Ti16",
+    "gpu_list": [0],
 
     "arch": {
-        "type": "TandemTPS",
+        "type": "Student_Ti16",
         "args": {}
     },
     "data_loader": {
         "type": "IMNETDataLoader",
         "args":{
-            "data_dir": "./../data/imagenet",
-            "batch_size": 8,
+            "data_dir": "./../data/",
+            "batch_size": 64,
             "num_workers": 2,
             "pin_memory": true,
+            "repeated_aug": false,
             "transform_config": {
                 "input_size": 224,
                 "color_jitter": 0.4,
@@ -40,15 +41,15 @@
     "optimizer": {
         "type": "AdamW",
         "args":{
-            "lr": 0.001,
-            "weight_decay": 0.05,
-            "amsgrad": true
+            "lr": 5e-4,
+            "betas": [0,0],
+            "weight_decay": 0.05
         }
     },
     "loss": {
         "type": "DistillationLoss",
         "args": {
-            "distillation_type": "soft",
+            "distillation_type": "none",
             "alpha": 0.5,
             "tau": 2
         }
@@ -57,21 +58,21 @@
         "accuracy", "top_k_acc"
     ],
     "lr_scheduler": {
-        "type": "StepLR",
-        "args": {
-            "step_size": 50,
-            "gamma": 0.1
-        }
+        "sched": "cosine",
+        "cooldown_epochs": 10,
+        "min_lr": 1e-5,
+        "warmup_lr": 1e-6,
+        "warmup_epochs": 5
     },
     "trainer": {
-        "epochs": 2,
+        "epochs": 3,
 
-        "save_dir": "saved/",
-        "save_period": 1,
+        "save_dir": "./../saved/",
+        "save_period": 25,
         "verbosity": 2,
         
         "monitor": "min val_loss",
-        "early_stop": 10,
+        "early_stop": 100,
 
         "tensorboard": true
     }

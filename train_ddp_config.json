@@ -10,9 +10,10 @@
         "type": "IMNETDataLoader",
         "args":{
             "data_dir": "./../data/",
-            "batch_size": 128,
+            "batch_size": 64,
             "num_workers": 2,
             "pin_memory": true,
+            "repeated_aug": true,
             "transform_config": {
                 "input_size": 224,
                 "color_jitter": 0.4,
@@ -64,7 +65,7 @@
         "warmup_epochs": 5
     },
     "trainer": {
-        "epochs": 300,
+        "epochs": 3,
 
         "save_dir": "./../saved/",
         "save_period": 25,
@@ -73,6 +74,6 @@
         "monitor": "min val_loss",
         "early_stop": 100,
 
-        "tensorboard": false
+        "tensorboard": true
     }
 }

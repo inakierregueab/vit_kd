@@ -1,16 +1,29 @@
-version: '2'
+version: '3'
 
 services:
-  pytorch:
-    tty: true
-    container_name: pytorch_local_test
+  pytorch-ngc:
+    container_name: inaki_pytorch
+    image: nvdivia-pytorch-vitkd:v7
+    user: 10028:10000
     build:
         context: .
         dockerfile: Dockerfile
     ipc: host
+    network_mode: host
+    tty: true
+    ulimits:
+      memlock: -1
+      stack: 67108864
     ports:
-      - '8888:8888'
+      - '6006:6006'
+      - '12355:12355'
     volumes:
       - '.:/app'
-      - '/Users/inaki-eab/Desktop/hupba/repos/data:/data'
-    command: "python train.py"
+      - '/data-fast/127-data2/ierregue/ImageNet-1k:/data'
+      - '/data-slow/hupba/ierregue/research/vit_kd/saved:/saved'
+    command: bash -c "python train.py"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [ 'gpu' ]

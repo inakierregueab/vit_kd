@@ -8,14 +8,16 @@ class BaseTrainer:
     """
     Base class for all trainers
     """
-    def __init__(self, model, criterion, metric_ftns, optimizer, config):
+    def __init__(self, model, criterion, metric_ftns, optimizer, config, rank, is_distributed):
         self.config = config
-        self.logger = config.get_logger('trainer', config['trainer']['verbosity'])
+        self.logger = config.get_logger('trainer', verbosity=config['trainer']['verbosity'])
 
         self.model = model
         self.criterion = criterion
         self.metric_ftns = metric_ftns
         self.optimizer = optimizer
+        self.rank = rank
+        self.is_distributed = is_distributed
 
         cfg_trainer = config['trainer']
         self.epochs = cfg_trainer['epochs']
@@ -39,8 +41,11 @@ class BaseTrainer:
 
         self.checkpoint_dir = config.save_dir
 
-        # setup visualization writer instance                
-        self.writer = TensorboardWriter(config.log_dir, self.logger, cfg_trainer['tensorboard'])
+        # setup visualization writer instance
+        if self.rank == 0:
+            self.writer = TensorboardWriter(config.log_dir, self.logger, cfg_trainer['tensorboard'])
+        else:
+            self.writer = None
 
         if config.resume is not None:
             self._resume_checkpoint(config.resume)
@@ -62,41 +67,44 @@ class BaseTrainer:
         for epoch in range(self.start_epoch, self.epochs + 1):
             result = self._train_epoch(epoch)
 
-            # save logged informations into log dict
-            log = {'epoch': epoch}
-            log.update(result)
+            if self.rank == 0:
+                # save and print logged information
+                log = {'epoch': epoch}
+                log.update(result)
+                for key, value in log.items():
+                    self.logger.info('    {:15s}: {}'.format(str(key), value))
 
-            # print logged informations to the screen
-            for key, value in log.items():
-                self.logger.info('    {:15s}: {}'.format(str(key), value))
+                # evaluate model performance according to configured metric, save best checkpoint as model_best
+                best = False
+                if self.mnt_mode != 'off':
+                    try:
+                        # check whether model performance improved or not, according to specified metric(mnt_metric)
+                        improved = (self.mnt_mode == 'min' and log[self.mnt_metric] <= self.mnt_best) or \
+                                   (self.mnt_mode == 'max' and log[self.mnt_metric] >= self.mnt_best)
+                    except KeyError:
+                        self.logger.warning("Warning: Metric '{}' is not found. "
+                                            "Model performance monitoring is disabled.".format(self.mnt_metric))
+                        self.mnt_mode = 'off'
+                        improved = False
 
-            # evaluate model performance according to configured metric, save best checkpoint as model_best
-            best = False
-            if self.mnt_mode != 'off':
-                try:
-                    # check whether model performance improved or not, according to specified metric(mnt_metric)
-                    improved = (self.mnt_mode == 'min' and log[self.mnt_metric] <= self.mnt_best) or \
-                               (self.mnt_mode == 'max' and log[self.mnt_metric] >= self.mnt_best)
-                except KeyError:
-                    self.logger.warning("Warning: Metric '{}' is not found. "
-                                        "Model performance monitoring is disabled.".format(self.mnt_metric))
-                    self.mnt_mode = 'off'
-                    improved = False
+                    if improved:
+                        self.mnt_best = log[self.mnt_metric]
+                        not_improved_count = 0
+                        best = True
+                    else:
+                        not_improved_count += 1
 
-                if improved:
-                    self.mnt_best = log[self.mnt_metric]
-                    not_improved_count = 0
-                    best = True
-                else:
-                    not_improved_count += 1
+                    if not_improved_count > self.early_stop:
+                        self.logger.info("Validation performance didn\'t improve for {} epochs. "
+                                         "Training stops.".format(self.early_stop))
+                        break
 
-                if not_improved_count > self.early_stop:
-                    self.logger.info("Validation performance didn\'t improve for {} epochs. "
-                                     "Training stops.".format(self.early_stop))
-                    break
+                if epoch % self.save_period == 0:
+                    self._save_checkpoint(epoch, save_best=best)
 
-            if epoch % self.save_period == 0:
-                self._save_checkpoint(epoch, save_best=best)
+            # TODO: makes sense? iteration time gets small improvement
+            if self.is_distributed:
+                torch.distributed.barrier()
 
     def _save_checkpoint(self, epoch, save_best=False):
         """
@@ -131,6 +139,7 @@ class BaseTrainer:
         :param resume_path: Checkpoint path to be resumed
         """
         resume_path = str(resume_path)
+        # TODO: to avoid multiplicity only rank 0 should log this
         self.logger.info("Loading checkpoint: {} ...".format(resume_path))
         checkpoint = torch.load(resume_path)
         self.start_epoch = checkpoint['epoch'] + 1

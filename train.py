@@ -1,5 +1,7 @@
 import argparse
 import collections
+import os
+
 import torch
 import numpy as np
 import data_loader.data_loaders as module_data
@@ -8,47 +10,76 @@ import models.metric as module_metric
 import models.model_hub as module_arch
 from parse_config import ConfigParser
 from trainer import Trainer
-from utils import prepare_device_2
+from utils import prepare_device, build_lr_scheduler
 
-
-# fix random seeds for reproducibility
-SEED = 123
-torch.manual_seed(SEED)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
-np.random.seed(SEED)
 
 def main(config):
-    logger = config.get_logger('train')
+
+    # fix random seeds for reproducibility
+    SEED = 123
+    torch.manual_seed(SEED)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    np.random.seed(SEED)
+
+    n_gpus = len(config['gpu_list'])
+    is_distributed = n_gpus > 1
+    if is_distributed:
+        os.environ['MASTER_ADDR'] = 'localhost'
+        # watchmal automatically select port based on base gpu
+        os.environ['MASTER_PORT'] = '12355'
+
+        print("Using multiprocessing...")
+        dev_ids = ["cuda:{0}".format(x) for x in config['gpu_list']]
+        print("Using DistributedDataParallel on these devices: {}".format(dev_ids))
+
+        # TODO: fix printing, metrics and model state dict when ddp is used
+        torch.multiprocessing.spawn(main_worker_function, nprocs=n_gpus, args=(n_gpus, is_distributed, config))
+
+    else:
+        print("Not using multiprocessing...")
+        main_worker_function(0, n_gpus, is_distributed, config)
+
+
+def main_worker_function(rank, world_size, is_distributed, config):
+
+    if is_distributed:
+        device = config['gpu_list'][rank]
+        print("Running main worker function on device: {}".format(device))
+        torch.distributed.init_process_group('nccl', init_method='env://', world_size=world_size, rank=rank)
+
+    else:
+        device = prepare_device(config['gpu_list'])
 
     # setup data_loader instances
-    data_loader = config.init_obj('data_loader', module_data)
+    data_loader = config.init_obj('data_loader', module_data,
+                                  is_distributed=is_distributed, rank=rank, world_size=world_size)
     valid_data_loader = data_loader.split_validation()
 
-    # build model architecture, then print to console
+    # build model architecture
     model = config.init_obj('arch', module_arch)
-    logger.info(model)
-
-    # TODO: prepare for (multi-device) GPU training
-    # device, device_ids = prepare_device(config['n_gpu'])
-    device, device_ids = prepare_device_2(config['n_gpu'])
+    if rank == 0:
+        logger = config.get_logger('train')
+        logger.info(model)
     model = model.to(device)
-    if len(device_ids) > 1:
-        model = torch.nn.DataParallel(model, device_ids=device_ids)
+    if is_distributed:
+        # If BatchNorm is used, convert it to SyncBatchNorm
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[device])
+    # TODO: torch.compile() for faster inference HERE, are savable?
 
     # get function handles of loss and metrics
     # TODO: criterion to device?
-    #criterion = getattr(module_loss, config['loss'])
-    criterion = config.init_obj('loss', module_loss)
+    criterion = config.init_obj('loss', module_loss, rank=rank)
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
-    # TODO: use timm create_optimizer, create_scheduler? as in DeiT
     optimizer = config.init_obj('optimizer', torch.optim, trainable_params)
-    lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
+    lr_scheduler = build_lr_scheduler(config, optimizer)
 
     trainer = Trainer(model, criterion, metrics, optimizer,
+                      is_distributed=is_distributed,
+                      rank=rank,
                       config=config,
                       device=device,
                       data_loader=data_loader,
@@ -56,6 +87,9 @@ def main(config):
                       lr_scheduler=lr_scheduler)
 
     trainer.train()
+
+    if is_distributed:
+        torch.distributed.destroy_process_group()
 
 
 if __name__ == '__main__':

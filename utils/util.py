@@ -5,6 +5,10 @@ from pathlib import Path
 from itertools import repeat
 from collections import OrderedDict
 
+from timm.scheduler import create_scheduler
+
+from utils.param_store import ParameterStore
+
 
 def ensure_dir(dirname):
     dirname = Path(dirname)
@@ -26,49 +30,30 @@ def inf_loop(data_loader):
     for loader in repeat(data_loader):
         yield from loader
 
-def prepare_device(n_gpu_use):
-    """
-    setup GPU device if available. get gpu device indices which are used for DataParallel
-    """
-    n_gpu = torch.cuda.device_count()
-    if n_gpu_use > 0 and n_gpu == 0:
-        print("Warning: There\'s no GPU available on this machine,"
-              "training will be performed on CPU.")
-        n_gpu_use = 0
-    if n_gpu_use > n_gpu:
-        print(f"Warning: The number of GPU\'s configured to use is {n_gpu_use}, but only {n_gpu} are "
-              "available on this machine.")
-        n_gpu_use = n_gpu
-    device = torch.device('cuda:0' if n_gpu_use > 0 else 'cpu')
-    list_ids = list(range(n_gpu_use))
-    return device, list_ids
-
 # TODO: add support for multi-gpu training
-def prepare_device_2(n_gpu_use):
+def prepare_device(gpu_list):
 
-    if torch.cuda.is_available() and n_gpu_use > 0:
-        n_gpu = torch.cuda.device_count()
-        if n_gpu_use > n_gpu:
-            print(f"Warning: The number of GPU\'s configured to use is {n_gpu_use}, but only {n_gpu} are "
-                  "available on this machine.")
-            n_gpu_use = n_gpu
-        device = torch.device('cuda:0')
+    if torch.cuda.is_available():
+        print("Using a single GPU...")
+        device = torch.device(f'cuda:{gpu_list[0]}')
 
-    elif torch.backends.mps.is_available() and n_gpu_use > 0:
-        print("Warning: MPS is available on this machine,"
-              "training will be performed on MPS.")
-
+    elif torch.backends.mps.is_available():
+        print("MPS is available on this machine, training will be performed on MPS.")
         device = torch.device('mps')
-        n_gpu_use = 1
 
     else:
-        print("Warning: There\'s no GPU available on this machine,"
-              "training will be performed on CPU.")
+        print("Warning: There\'s no GPU available on this machine, training will be performed on CPU.")
         device = torch.device('cpu')
-        n_gpu_use = 1
 
-    list_ids = list(range(n_gpu_use))
-    return device, list_ids
+    return device
+
+def build_lr_scheduler(config, optimizer):
+    lr_config = config['lr_scheduler']
+    lr_config['epochs'] = config['trainer']['epochs']
+    lr_parsed_config = ParameterStore(lr_config)
+    lr_scheduler, _ = create_scheduler(lr_parsed_config, optimizer)
+    return lr_scheduler
+
 
 class MetricTracker:
     def __init__(self, *keys, writer=None):
@@ -92,3 +77,5 @@ class MetricTracker:
 
     def result(self):
         return dict(self._data.average)
+
+

@@ -40,7 +40,6 @@ class ConfigParser:
         write_json(self.config, self.save_dir / 'config.json')
 
         # configure logging module
-        setup_logging(self.log_dir)
         self.log_levels = {
             0: logging.WARNING,
             1: logging.INFO,
@@ -112,6 +111,8 @@ class ConfigParser:
         return self.config[name]
 
     def get_logger(self, name, verbosity=2):
+        # Logger must be setup inside distributed process
+        setup_logging(self.log_dir)
         msg_verbosity = 'verbosity option {} is invalid. Valid options are {}.'.format(verbosity, self.log_levels.keys())
         assert verbosity in self.log_levels, msg_verbosity
         logger = logging.getLogger(name)

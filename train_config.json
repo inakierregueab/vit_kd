@@ -1,16 +1,16 @@
 {
-    "name": "Student_Ti16",
+    "name": "TeacherGS",
     "gpu_list": [0],
 
     "arch": {
-        "type": "Student_Ti16",
+        "type": "ViTB16",
         "args": {}
     },
     "data_loader": {
         "type": "IMNETDataLoader",
         "args":{
             "data_dir": "./../data/",
-            "batch_size": 64,
+            "batch_size": 128,
             "num_workers": 2,
             "pin_memory": true,
             "repeated_aug": false,
@@ -69,10 +69,10 @@
 
         "save_dir": "./../saved/",
         "save_period": 10,
-        "verbosity": 2,
+        "verbosity": 0,
         
         "monitor": "min val_loss",
-        "early_stop": 100,
+        "early_stop": 10,
 
         "tensorboard": true
     }

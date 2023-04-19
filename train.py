@@ -30,8 +30,8 @@ def main(config, trials=None):
         config['optimizer']['args']['weight_decay'] = trials.suggest_float('weight_decay', 0.05, 0.5)
         config['optimizer']['betas'] = [trials.suggest_float('beta1', 0.0, 1.0), trials.suggest_float('beta2', 0.0, 1.0)]
 
-        config['mixup']['args']['mixup_alpha'] = trials.suggest_float('alpha', 0.5, 1.0)
-        config['mixup']['args']['cutmix_alpha'] = trials.suggest_float('alpha', 0.5, 1.0)
+        config['mixup']['args']['mixup_alpha'] = trials.suggest_float('m_alpha', 0.5, 1.0)
+        config['mixup']['args']['cutmix_alpha'] = trials.suggest_float('c_alpha', 0.5, 1.0)
         config['mixup']['args']['label_smoothing'] = trials.suggest_float('label_smoothing', 0.0, 0.5)
 
         config['lr_scheduler']['warmup_epochs'] = trials.suggest_int('warmup_epochs', 3, 8)

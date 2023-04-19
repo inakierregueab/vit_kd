@@ -65,10 +65,10 @@
         "warmup_epochs": 5
     },
     "trainer": {
-        "epochs": 3,
+        "epochs": 50,
 
         "save_dir": "./../saved/",
-        "save_period": 25,
+        "save_period": 10,
         "verbosity": 2,
         
         "monitor": "min val_loss",

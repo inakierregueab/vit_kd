@@ -1,4 +1,6 @@
+import optuna
 import torch
+import torch.distributed as dist
 from abc import abstractmethod
 from numpy import inf
 from logger import TensorboardWriter
@@ -8,7 +10,7 @@ class BaseTrainer:
     """
     Base class for all trainers
     """
-    def __init__(self, model, criterion, metric_ftns, optimizer, config, rank, is_distributed):
+    def __init__(self, model, criterion, metric_ftns, optimizer, config, rank, is_distributed, trial):
         self.config = config
         self.logger = config.get_logger('trainer', verbosity=config['trainer']['verbosity'])
 
@@ -18,6 +20,7 @@ class BaseTrainer:
         self.optimizer = optimizer
         self.rank = rank
         self.is_distributed = is_distributed
+        self.trial = trial
 
         cfg_trainer = config['trainer']
         self.epochs = cfg_trainer['epochs']
@@ -74,6 +77,10 @@ class BaseTrainer:
                 for key, value in log.items():
                     self.logger.info('    {:15s}: {}'.format(str(key), value))
 
+                self.trial.report(log['val_loss'], epoch)
+                if self.trial.should_prune():
+                    raise optuna.TrialPruned()
+
                 # evaluate model performance according to configured metric, save best checkpoint as model_best
                 best = False
                 if self.mnt_mode != 'off':
@@ -104,7 +111,17 @@ class BaseTrainer:
 
             # TODO: makes sense? iteration time gets small improvement
             if self.is_distributed:
-                torch.distributed.barrier()
+                dist.barrier()
+
+        # Output final result in validation set
+        # TODO: which metric? passa after every epoch not final?
+        score = result['val_loss']
+
+        # TODO: handle optuna when using multiple gpus
+        if self.is_distributed:
+            dist.broadcast_object_list([score], src=0)
+
+        return score
 
     def _save_checkpoint(self, epoch, save_best=False):
         """

@@ -3,7 +3,7 @@ version: '3'
 services:
   pytorch-ngc:
     container_name: inaki_pytorch
-    image: nvdivia-pytorch-vitkd:v7
+    image: nvdivia-pytorch-vitkd:v8
     user: 10028:10000
     build:
         context: .

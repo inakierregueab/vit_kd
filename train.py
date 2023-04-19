@@ -1,6 +1,7 @@
 import argparse
 import collections
 import os
+import optuna
 
 import torch
 import numpy as np
@@ -13,7 +14,7 @@ from trainer import Trainer
 from utils import prepare_device, build_lr_scheduler
 
 
-def main(config):
+def main(config, trials=None):
 
     # fix random seeds for reproducibility
     SEED = 123
@@ -21,6 +22,15 @@ def main(config):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     np.random.seed(SEED)
+
+    # Hyperparameter optimization
+    if trials is not None:
+        config['optimizer']['args']['lr'] = trials.suggest_float('lr', 1e-5, 1e-1)
+        config['data_loader']['args']['batch_size'] = trials.suggest_int('batch_size', 8, 64)
+        config['mixup']['args']['mixup_alpha'] = trials.suggest_float('alpha', 0.0, 1.0)
+        config['mixup']['args']['cutmix_alpha'] = trials.suggest_float('alpha', 0.0, 1.0)
+        config['mixup']['args']['label_smoothing'] = trials.suggest_float('label_smoothing', 0.0, 0.5)
+
 
     n_gpus = len(config['gpu_list'])
     is_distributed = n_gpus > 1
@@ -34,14 +44,16 @@ def main(config):
         print("Using DistributedDataParallel on these devices: {}".format(dev_ids))
 
         # TODO: fix printing, metrics and model state dict when ddp is used
-        torch.multiprocessing.spawn(main_worker_function, nprocs=n_gpus, args=(n_gpus, is_distributed, config))
+        score = torch.multiprocessing.spawn(main_worker_function, nprocs=n_gpus, args=(n_gpus, is_distributed, config, trials))
 
     else:
         print("Not using multiprocessing...")
-        main_worker_function(0, n_gpus, is_distributed, config)
+        score = main_worker_function(0, n_gpus, is_distributed, config, trials)
+
+    return score
 
 
-def main_worker_function(rank, world_size, is_distributed, config):
+def main_worker_function(rank, world_size, is_distributed, config, trials):
 
     if is_distributed:
         device = config['gpu_list'][rank]
@@ -84,12 +96,15 @@ def main_worker_function(rank, world_size, is_distributed, config):
                       device=device,
                       data_loader=data_loader,
                       valid_data_loader=valid_data_loader,
-                      lr_scheduler=lr_scheduler)
+                      lr_scheduler=lr_scheduler,
+                      trial=trials)
 
-    trainer.train()
+    score = trainer.train()
 
     if is_distributed:
         torch.distributed.destroy_process_group()
+
+    return score
 
 
 if __name__ == '__main__':
@@ -108,4 +123,29 @@ if __name__ == '__main__':
         CustomArgs(['--bs', '--batch_size'], type=int, target='data_loader;args;batch_size')
     ]
     config = ConfigParser.from_args(args, options)
-    main(config)
+
+    # Start hyperparameter optimization
+    # Guide: https://towardsdatascience.com/hyperparameter-tuning-of-neural-networks-with-optuna-and-pytorch-22e179efc837
+    study = optuna.create_study(
+        direction='minimize',
+        sampler=optuna.samplers.TPESampler(seed=123),
+        pruner=optuna.pruners.MedianPruner()
+    )
+    study.optimize(lambda trial: main(config, trial), n_trials=100)
+
+    pruned_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.PRUNED])
+    complete_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.COMPLETE])
+
+    print("Study statistics: ")
+    print("  Number of finished trials: ", len(study.trials))
+    print("  Number of pruned trials: ", len(pruned_trials))
+    print("  Number of complete trials: ", len(complete_trials))
+
+    print("Best trial:")
+    trial = study.best_trial
+
+    print("  Value: ", trial.value)
+
+    print("  Params: ")
+    for key, value in trial.params.items():
+        print("    {}: {}".format(key, value))

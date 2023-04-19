@@ -14,8 +14,8 @@ class Trainer(BaseTrainer):
     Trainer class
     """
     def __init__(self, model, criterion, metric_ftns, optimizer, config, device,
-                 data_loader, is_distributed, rank, valid_data_loader=None, lr_scheduler=None, len_epoch=None):
-        super().__init__(model, criterion, metric_ftns, optimizer, config, rank, is_distributed=is_distributed)
+                 data_loader, is_distributed, rank, trial, valid_data_loader=None, lr_scheduler=None, len_epoch=None):
+        super().__init__(model, criterion, metric_ftns, optimizer, config, rank, is_distributed=is_distributed, trial=trial)
         self.config = config
         self.device = device
         self.is_distributed = is_distributed

@@ -41,7 +41,7 @@ def main(config, trials=None):
     n_gpus = len(config['gpu_list'])
     is_distributed = n_gpus > 1
 
-    scorer = Scorer()
+    scorer = Scorer(is_distributed)
 
     if is_distributed:
         os.environ['MASTER_ADDR'] = 'localhost'
@@ -56,7 +56,7 @@ def main(config, trials=None):
         print("Not using multiprocessing...")
         main_worker_function(0, n_gpus, is_distributed, config, trials, scorer)
 
-    return scorer.score
+    return scorer.get_score()
 
 
 def main_worker_function(rank, world_size, is_distributed, config, trials, scorer):
@@ -134,7 +134,7 @@ if __name__ == '__main__':
         sampler=optuna.samplers.TPESampler(seed=123),
         pruner=optuna.pruners.MedianPruner()
     )
-    study.optimize(lambda trial: main(config, trial), n_trials=100)
+    study.optimize(lambda trial: main(config, trial), n_trials=10)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.COMPLETE])

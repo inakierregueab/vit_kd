@@ -38,8 +38,8 @@ class IMNETDataLoader(DataLoader):
         self.val_dataset = datasets.ImageFolder(self.val_dir, transform=self.val_transform)
 
         # Subset for debugging
-        train_indices = torch.arange(10000)
-        val_indices = torch.arange(1000)
+        train_indices = torch.arange(1000)
+        val_indices = torch.arange(100)
         self.train_dataset = Subset(self.train_dataset, train_indices)
         self.val_dataset = Subset(self.train_dataset, val_indices)
 

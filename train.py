@@ -13,7 +13,7 @@ import models.model_hub as module_arch
 from parse_config import ConfigParser
 from trainer import Trainer
 from utils import prepare_device, build_lr_scheduler
-from utils.score_tunel import Score
+from utils.score_tunel import Scorer
 
 
 def main(config, trials=None):
@@ -41,7 +41,7 @@ def main(config, trials=None):
     n_gpus = len(config['gpu_list'])
     is_distributed = n_gpus > 1
 
-    scorer = Score()
+    scorer = Scorer()
 
     if is_distributed:
         os.environ['MASTER_ADDR'] = 'localhost'

@@ -1,5 +1,5 @@
 # Simple class to pass the score to main function as attribute
-class Score:
+class Scorer:
     def __init__(self):
         self.score = None
 

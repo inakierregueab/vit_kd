@@ -13,6 +13,7 @@ import models.model_hub as module_arch
 from parse_config import ConfigParser
 from trainer import Trainer
 from utils import prepare_device, build_lr_scheduler
+from utils.score_tunel import Score
 
 
 def main(config, trials=None):
@@ -40,6 +41,8 @@ def main(config, trials=None):
     n_gpus = len(config['gpu_list'])
     is_distributed = n_gpus > 1
 
+    scorer = Score()
+
     if is_distributed:
         os.environ['MASTER_ADDR'] = 'localhost'
         os.environ['MASTER_PORT'] = '12355'
@@ -48,15 +51,15 @@ def main(config, trials=None):
         dev_ids = ["cuda:{0}".format(x) for x in config['gpu_list']]
         print("Using DistributedDataParallel on these devices: {}".format(dev_ids))
 
-        score = torch.multiprocessing.spawn(main_worker_function, nprocs=n_gpus, args=(n_gpus, is_distributed, config, trials))
+        torch.multiprocessing.spawn(main_worker_function, nprocs=n_gpus, args=(n_gpus, is_distributed, config, trials, scorer))
     else:
         print("Not using multiprocessing...")
-        score = main_worker_function(0, n_gpus, is_distributed, config, trials)
+        main_worker_function(0, n_gpus, is_distributed, config, trials, scorer)
 
-    return score
+    return scorer.score
 
 
-def main_worker_function(rank, world_size, is_distributed, config, trials):
+def main_worker_function(rank, world_size, is_distributed, config, trials, scorer):
 
     if is_distributed:
         device = config['gpu_list'][rank]
@@ -98,14 +101,13 @@ def main_worker_function(rank, world_size, is_distributed, config, trials):
                       data_loader=data_loader,
                       valid_data_loader=valid_data_loader,
                       lr_scheduler=lr_scheduler,
-                      trial=trials)
+                      trial=trials,
+                      scorer=scorer)
 
-    score = trainer.train()
+    trainer.train()
 
     if is_distributed:
         dist.destroy_process_group()
-
-    return score
 
 
 if __name__ == '__main__':

@@ -10,7 +10,7 @@ class BaseTrainer:
     """
     Base class for all trainers
     """
-    def __init__(self, model, criterion, metric_ftns, optimizer, config, rank, is_distributed, trial):
+    def __init__(self, model, criterion, metric_ftns, optimizer, config, rank, is_distributed, trial, scorer=None):
         self.config = config
         self.logger = config.get_logger('trainer', verbosity=config['trainer']['verbosity'])
 
@@ -21,6 +21,7 @@ class BaseTrainer:
         self.rank = rank
         self.is_distributed = is_distributed
         self.trial = trial
+        self.scorer = scorer
 
         cfg_trainer = config['trainer']
         self.epochs = cfg_trainer['epochs']
@@ -77,7 +78,10 @@ class BaseTrainer:
                 for key, value in log.items():
                     self.logger.info('    {:15s}: {}'.format(str(key), value))
 
-                self.trial.report(log['val_loss'], epoch)
+                # Define score for optuna and prune if necessary
+                # TODO: should be val_acc?
+                score = log['val_loss']
+                self.trial.report(score, epoch)
                 if self.trial.should_prune():
                     raise optuna.TrialPruned()
 
@@ -114,14 +118,8 @@ class BaseTrainer:
                 dist.barrier()
 
         # Output final result in validation set
-        # TODO: which metric? passa after every epoch not final?
-        score = result['val_loss']
-
-        # TODO: handle optuna when using multiple gpus
-        if self.is_distributed:
-            dist.broadcast_object_list([score], src=0)
-
-        return score
+        if self.rank == 0:
+            self.scorer.set_score(score)
 
     def _save_checkpoint(self, epoch, save_best=False):
         """

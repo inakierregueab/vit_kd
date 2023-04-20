@@ -81,14 +81,12 @@ class Trainer(BaseTrainer):
                 if batch_idx % self.log_step == 0:
                     previous_iteration_time = iteration_time
                     iteration_time = time()
-                    self.logger.info('Train Epoch: {} {} Loss: {:.6f} - Elapsed Time: {:.3f} - Iteration Time: {:.3f}'.format(
+                    self.logger.info('Train Epoch: {} {} Loss: {:.6f} - Elapsed Time: {:.3f} - Avg Iteration time: {:.3f}'.format(
                         epoch,
                         self._progress(batch_idx),
                         loss.item()/self.world_size,
                         iteration_time - start_time,
-                        iteration_time - previous_iteration_time))
-
-                    # self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+                        (iteration_time - previous_iteration_time)/self.log_step))
 
             if batch_idx == self.len_epoch:
                 break

@@ -58,6 +58,7 @@ class Trainer(BaseTrainer):
         for batch_idx, (data, target) in enumerate(self.data_loader):
             data, target = data.to(self.device), target.to(self.device)
 
+            # TODO: delete flag, simply set prob to 0
             if self.config['mixup']['flag']:
                 data, target = self.mixup_fn(data, target)
 

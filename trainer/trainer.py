@@ -78,21 +78,26 @@ class Trainer(BaseTrainer):
                 for met in self.metric_ftns:
                     self.train_metrics.update(met.__name__, met(output/self.world_size, target))
 
+                previous_iteration_time = iteration_time
+                iteration_time = time()
+                elapsed_time = iteration_time - start_time
+                iter_time = iteration_time - previous_iteration_time
+                self.writer.add_scalar('time/iter', iter_time)
+
                 if batch_idx % self.log_step == 0:
-                    previous_iteration_time = iteration_time
-                    iteration_time = time()
-                    self.logger.info('Train Epoch: {} {} Loss: {:.6f} - Elapsed Time: {:.3f} - Avg Iteration time: {:.3f}'.format(
+                    self.logger.info('Train Epoch: {} {} Loss: {:.6f} - Elapsed Time: {:.3f} - Iteration time: {:.3f}'.format(
                         epoch,
                         self._progress(batch_idx),
                         loss.item()/self.world_size,
-                        iteration_time - start_time,
-                        (iteration_time - previous_iteration_time)/self.log_step))
+                        elapsed_time,
+                        iter_time))
 
             if batch_idx == self.len_epoch:
                 break
 
         if self.rank == 0:
             log = self.train_metrics.result()
+            self.writer.add_scalar('time/epoch', elapsed_time)
 
         if self.do_validation:
             val_log = self._valid_epoch(epoch)
@@ -139,7 +144,6 @@ class Trainer(BaseTrainer):
                     for met in self.metric_ftns:
                         self.valid_metrics.update(met.__name__, met(output/self.world_size, target, is_logits=False))
 
-                    # self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
         # TODO: what are we saving down here?
         """if self.rank == 0:
             # add histogram of model parameters to the tensorboard

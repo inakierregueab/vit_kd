@@ -1,5 +1,5 @@
 {
-    "name": "Student_Ti16",
+    "name": "mps_bs128",
     "gpu_list": [0],
 
     "arch": {
@@ -10,7 +10,7 @@
         "type": "IMNETDataLoader",
         "args":{
             "data_dir": "./../data/",
-            "batch_size": 64,
+            "batch_size": 128,
             "num_workers": 2,
             "pin_memory": true,
             "repeated_aug": false,
@@ -65,7 +65,7 @@
         "warmup_epochs": 5
     },
     "trainer": {
-        "epochs": 3,
+        "epochs": 10,
 
         "save_dir": "./../saved/",
         "save_period": 25,

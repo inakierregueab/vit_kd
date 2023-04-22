@@ -82,7 +82,9 @@ class Trainer(BaseTrainer):
                 iteration_time = time()
                 elapsed_time = iteration_time - start_time
                 iter_time = iteration_time - previous_iteration_time
-                self.writer.add_scalar('time/iter', iter_time)
+                # TODO: first batch of epoch is very slow, avoid printing
+                if batch_idx % self.len_epoch != 0:
+                    self.writer.add_scalar('time/iter', iter_time)
 
                 if batch_idx % self.log_step == 0:
                     self.logger.info('Train Epoch: {} {} Loss: {:.6f} - Elapsed Time: {:.3f} - Iteration time: {:.3f}'.format(
@@ -97,7 +99,9 @@ class Trainer(BaseTrainer):
 
         if self.rank == 0:
             log = self.train_metrics.result()
-            self.writer.add_scalar('time/epoch', elapsed_time)
+            self.writer.add_scalar('time/epoch', elapsed_time, epoch=epoch)
+            # TODO: should it be mean loss per epoch? delete these metrics after xp
+            self.writer.add_scalar('loss/loss_per_epoch', loss.item()/self.world_size, epoch=epoch)
 
         if self.do_validation:
             val_log = self._valid_epoch(epoch)

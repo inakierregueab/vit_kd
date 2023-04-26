@@ -21,9 +21,10 @@ services:
       - '.:/app'
       - '/data-fast/127-data2/ierregue/ImageNet-1k:/data'
       - '/data-slow/hupba/ierregue/research/vit_kd/saved:/saved'
-    command: bash -c "python train.py"
+    command: bash -c "CUDA_DEVICE_ORDER=PCI_BUS_ID python train.py --device 5,6"
     deploy:
       resources:
         reservations:
           devices:
-            - capabilities: [ 'gpu' ]
+            - driver: nvidia
+              capabilities: [gpu]

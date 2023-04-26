@@ -1,16 +1,16 @@
 {
-    "name": "mps_bs128",
+    "name": "2_64_5e-4",
     "gpu_list": [0],
 
     "arch": {
-        "type": "Student_Ti16",
+        "type": "ViTB16",
         "args": {}
     },
     "data_loader": {
         "type": "IMNETDataLoader",
         "args":{
             "data_dir": "./../data/",
-            "batch_size": 128,
+            "batch_size": 64,
             "num_workers": 2,
             "pin_memory": true,
             "repeated_aug": false,
@@ -65,14 +65,14 @@
         "warmup_epochs": 5
     },
     "trainer": {
-        "epochs": 10,
+        "epochs": 2,
 
         "save_dir": "./../saved/",
         "save_period": 25,
         "verbosity": 2,
         
         "monitor": "min val_loss",
-        "early_stop": 100,
+        "early_stop": 10,
 
         "tensorboard": true
     }

@@ -82,7 +82,8 @@ class Trainer(BaseTrainer):
                 iteration_time = time()
                 elapsed_time = iteration_time - start_time
                 iter_time = iteration_time - previous_iteration_time
-                # TODO: first batch of epoch is very slow, avoid printing
+                # TODO: first batch of epoch is very slow, avoid printing:
+                # explanation: https://discuss.pytorch.org/t/data-loader-first-batch-from-each-epoch-is-slow/92844
                 if batch_idx % self.len_epoch != 0:
                     self.writer.add_scalar('time/iter', iter_time)
 

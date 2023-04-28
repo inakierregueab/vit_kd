@@ -66,11 +66,14 @@ class IMNETDataLoader(DataLoader):
         self.init_kwargs = {
             'batch_size': batch_size,
             'collate_fn': collate_fn,
-            'num_workers': 0 if is_distributed else num_workers,
-            'pin_memory': False if is_distributed else pin_memory,
+            'num_workers': num_workers,
+            'pin_memory': pin_memory,
+            'persistent_workers': True,
+            'drop_last': False,
         }
 
-        super().__init__(dataset=self.train_dataset,sampler=self.train_sampler, drop_last=False, **self.init_kwargs)
+        #TODO: try with pin_memory=True, persistent_workers=True, pin_memory_device=rank?
+        super().__init__(dataset=self.train_dataset,sampler=self.train_sampler, **self.init_kwargs)
 
     def get_transforms(self, transform_config, is_train):
         resize_im = transform_config['input_size'] > 32

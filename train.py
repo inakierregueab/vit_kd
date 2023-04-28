@@ -26,8 +26,7 @@ def main(config):
     is_distributed = n_gpus > 1
     if is_distributed:
         os.environ['MASTER_ADDR'] = 'localhost'
-        # watchmal automatically select port based on base gpu
-        os.environ['MASTER_PORT'] = '12355'
+        os.environ['MASTER_PORT'] = str(12355 + config['gpu_list'][0])
 
         print("Using multiprocessing...")
         dev_ids = ["cuda:{0}".format(x) for x in config['gpu_list']]
@@ -44,9 +43,13 @@ def main(config):
 def main_worker_function(rank, world_size, is_distributed, config):
 
     if is_distributed:
+        #device = torch.device(f'cuda:{config["gpu_list"][rank]}')
         device = config['gpu_list'][rank]
+        torch.cuda.set_device(device)
         print("Running main worker function on device: {}".format(device))
         torch.distributed.init_process_group('nccl', init_method='env://', world_size=world_size, rank=rank)
+        # TODO:more info about error
+        #os.environ['NCCL_DEBUG'] = 'TRACE'
 
     else:
         device = prepare_device(config['gpu_list'])
@@ -64,6 +67,7 @@ def main_worker_function(rank, world_size, is_distributed, config):
     model = model.to(device)
     if is_distributed:
         # If BatchNorm is used, convert it to SyncBatchNorm
+        # TODO: warning comes from here
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[device])
     # TODO: torch.compile() for faster inference HERE, are savable?
 

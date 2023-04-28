@@ -1,6 +1,6 @@
 {
     "name": "2_64_5e-4",
-    "gpu_list": [0],
+    "gpu_list": [0,1],
 
     "arch": {
         "type": "ViTB16",

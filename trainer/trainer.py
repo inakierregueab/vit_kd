@@ -8,6 +8,8 @@ from time import time
 from base import BaseTrainer
 from utils import inf_loop, MetricTracker
 
+import torch.profiler as profiler
+
 
 class Trainer(BaseTrainer):
     """
@@ -55,48 +57,62 @@ class Trainer(BaseTrainer):
         if self.is_distributed:
             self.data_loader.sampler.set_epoch(epoch)
 
-        for batch_idx, (data, target) in enumerate(self.data_loader):
-            data, target = data.to(self.device), target.to(self.device)
+        with profiler.profile(
+            activities=[
+                profiler.ProfilerActivity.CPU,
+                profiler.ProfilerActivity.CUDA],
+            schedule=torch.profiler.schedule(
+                wait=1,
+                warmup=1,
+                active=3),
+            on_trace_ready=torch.profiler.tensorboard_trace_handler('./logs'),
+            record_shapes=True,
+        ) as p:
 
-            # TODO: delete flag, simply set prob to 0
-            if self.config['mixup']['flag']:
-                data, target = self.mixup_fn(data, target)
+            for batch_idx, (data, target) in enumerate(self.data_loader):
+                data, target = data.to(self.device), target.to(self.device)
 
-            self.optimizer.zero_grad()
-            output = self.model(data)
-            loss = self.criterion(output, target)
-            loss.backward()
-            self.optimizer.step()
+                # TODO: delete flag, simply set prob to 0
+                if self.config['mixup']['flag']:
+                    data, target = self.mixup_fn(data, target)
 
-            if self.is_distributed:
-                torch.distributed.reduce(loss, dst=0, op=torch.distributed.ReduceOp.SUM)
-                torch.distributed.reduce(output, dst=0, op=torch.distributed.ReduceOp.SUM)
+                self.optimizer.zero_grad()
+                output = self.model(data)
+                loss = self.criterion(output, target)
+                loss.backward()
+                self.optimizer.step()
 
-            if self.rank == 0:
-                self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
-                self.train_metrics.update('loss', loss.item()/self.world_size)
-                for met in self.metric_ftns:
-                    self.train_metrics.update(met.__name__, met(output/self.world_size, target))
+                if self.is_distributed:
+                    torch.distributed.reduce(loss, dst=0, op=torch.distributed.ReduceOp.SUM)
+                    torch.distributed.reduce(output, dst=0, op=torch.distributed.ReduceOp.SUM)
 
-                previous_iteration_time = iteration_time
-                iteration_time = time()
-                elapsed_time = iteration_time - start_time
-                iter_time = iteration_time - previous_iteration_time
-                # TODO: first batch of epoch is very slow, avoid printing:
-                # explanation: https://discuss.pytorch.org/t/data-loader-first-batch-from-each-epoch-is-slow/92844
-                if batch_idx % self.len_epoch != 0:
-                    self.writer.add_scalar('time/iter', iter_time)
+                if self.rank == 0:
+                    self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
+                    self.train_metrics.update('loss', loss.item()/self.world_size)
+                    for met in self.metric_ftns:
+                        self.train_metrics.update(met.__name__, met(output/self.world_size, target))
 
-                if batch_idx % self.log_step == 0:
-                    self.logger.info('Train Epoch: {} {} Loss: {:.6f} - Elapsed Time: {:.3f} - Iteration time: {:.3f}'.format(
-                        epoch,
-                        self._progress(batch_idx),
-                        loss.item()/self.world_size,
-                        elapsed_time,
-                        iter_time))
+                    previous_iteration_time = iteration_time
+                    iteration_time = time()
+                    elapsed_time = iteration_time - start_time
+                    iter_time = iteration_time - previous_iteration_time
+                    # TODO: first batch of epoch is very slow, avoid printing:
+                    # explanation: https://discuss.pytorch.org/t/data-loader-first-batch-from-each-epoch-is-slow/92844
+                    if batch_idx % self.len_epoch != 0:
+                        self.writer.add_scalar('time/iter', iter_time)
 
-            if batch_idx == self.len_epoch:
-                break
+                    if batch_idx % self.log_step == 0:
+                        self.logger.info('Train Epoch: {} {} Loss: {:.6f} - Elapsed Time: {:.3f} - Iteration time: {:.3f}'.format(
+                            epoch,
+                            self._progress(batch_idx),
+                            loss.item()/self.world_size,
+                            elapsed_time,
+                            iter_time))
+
+                if batch_idx == self.len_epoch:
+                    break
+
+                p.step()
 
         if self.rank == 0:
             log = self.train_metrics.result()

@@ -37,7 +37,7 @@ class Trainer(BaseTrainer):
         self.train_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.valid_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
 
-        self.mixup_fn = Mixup(**config['mixup']['args'])
+        self.mixup_fn = Mixup(**config['mixup'])
 
     def _train_epoch(self, epoch):
         """
@@ -57,10 +57,7 @@ class Trainer(BaseTrainer):
 
         for batch_idx, (data, target) in enumerate(self.data_loader):
             data, target = data.to(self.device), target.to(self.device)
-
-            # TODO: delete flag, simply set prob to 0
-            if self.config['mixup']['flag']:
-                data, target = self.mixup_fn(data, target)
+            data, target = self.mixup_fn(data, target)
 
             self.optimizer.zero_grad()
             output = self.model(data)
@@ -82,7 +79,7 @@ class Trainer(BaseTrainer):
                 iteration_time = time()
                 elapsed_time = iteration_time - start_time
                 iter_time = iteration_time - previous_iteration_time
-                # TODO: first batch of epoch is very slow, avoid printing:
+                # First batch of epoch is very slow, avoid writing,
                 # explanation: https://discuss.pytorch.org/t/data-loader-first-batch-from-each-epoch-is-slow/92844
                 if batch_idx % self.len_epoch != 0:
                     self.writer.add_scalar('time/iter', iter_time)

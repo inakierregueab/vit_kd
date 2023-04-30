@@ -98,10 +98,9 @@ class Trainer(BaseTrainer):
         if self.rank == 0:
             log = self.train_metrics.result()
             self.writer.add_scalar('time/epoch', elapsed_time, epoch=epoch)
-            # TODO: should it be mean loss per epoch? delete these metrics after xp
             self.writer.add_scalar('loss/loss_per_epoch', loss.item()/self.world_size, epoch=epoch)
 
-        if self.do_validation:
+        if self.do_validation & (epoch % self.val_freq == 0):
             val_log = self._valid_epoch(epoch)
             if self.rank == 0:
                 log.update(**{'val_'+k : v for k, v in val_log.items()})

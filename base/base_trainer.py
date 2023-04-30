@@ -21,6 +21,7 @@ class BaseTrainer:
 
         cfg_trainer = config['trainer']
         self.epochs = cfg_trainer['epochs']
+        self.val_freq = cfg_trainer['val_freq']
         self.save_period = cfg_trainer['save_period']
         self.monitor = cfg_trainer.get('monitor', 'off')
 
@@ -76,7 +77,7 @@ class BaseTrainer:
 
                 # evaluate model performance according to configured metric, save best checkpoint as model_best
                 best = False
-                if self.mnt_mode != 'off':
+                if (self.mnt_mode != 'off') & (epoch % self.val_freq == 0):
                     try:
                         # check whether model performance improved or not, according to specified metric(mnt_metric)
                         improved = (self.mnt_mode == 'min' and log[self.mnt_metric] <= self.mnt_best) or \

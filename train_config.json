@@ -1,6 +1,6 @@
 {
-    "name": "2_64_5e-4",
-    "gpu_list": [0],
+    "name": "4_128_5e-4_val",
+    "gpu_list": [0,1,2,3],
 
     "arch": {
         "type": "ViTB16",
@@ -10,9 +10,10 @@
         "type": "IMNETDataLoader",
         "args":{
             "data_dir": "./../data/",
-            "batch_size": 64,
-            "num_workers": 2,
+            "batch_size": 128,
+            "num_workers": 8,
             "pin_memory": true,
+            "persistent_workers": true,
             "repeated_aug": false,
             "transform_config": {
                 "input_size": 224,
@@ -65,10 +66,10 @@
         "warmup_epochs": 5
     },
     "trainer": {
-        "epochs": 2,
+        "epochs": 300,
 
         "save_dir": "./../saved/",
-        "save_period": 25,
+        "save_period": 50,
         "verbosity": 2,
         
         "monitor": "min val_loss",

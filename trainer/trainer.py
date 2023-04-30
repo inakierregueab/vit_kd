@@ -98,7 +98,7 @@ class Trainer(BaseTrainer):
         if self.rank == 0:
             log = self.train_metrics.result()
             self.writer.add_scalar('time/epoch', elapsed_time, epoch=epoch)
-            self.writer.add_scalar('loss/loss_per_epoch', loss.item()/self.world_size, epoch=epoch)
+            self.writer.add_scalar('loss/loss_per_epoch', loss.item()/self.world_size, epoch=epoch)  #Loss from last batch
 
         if self.do_validation & (epoch % self.val_freq == 0):
             val_log = self._valid_epoch(epoch)
@@ -145,11 +145,6 @@ class Trainer(BaseTrainer):
                     for met in self.metric_ftns:
                         self.valid_metrics.update(met.__name__, met(output/self.world_size, target, is_logits=False))
 
-        # TODO: what are we saving down here?
-        """if self.rank == 0:
-            # add histogram of model parameters to the tensorboard
-            for name, p in self.model.named_parameters():
-                self.writer.add_histogram(name, p, bins='auto')"""
         if self.rank == 0:
             print("Validation Elapsed Time: {:.3f}".format(time() - start_time))
         return self.valid_metrics.result() if self.rank == 0 else None

@@ -98,12 +98,14 @@ class BaseTrainer:
                     if not_improved_count > self.early_stop:
                         self.logger.info("Validation performance didn\'t improve for {} epochs. "
                                          "Training stops.".format(self.early_stop))
+                        if self.is_distributed:
+                            # TODO: error here but exits code
+                            torch.distributed.destroy_process_group()
                         break
 
                 if epoch % self.save_period == 0:
                     self._save_checkpoint(epoch, save_best=best)
 
-            # TODO: makes sense? iteration time gets small improvement
             if self.is_distributed:
                 torch.distributed.barrier()
 

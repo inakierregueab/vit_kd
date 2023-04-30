@@ -25,7 +25,8 @@ class IMNETDataLoader(DataLoader):
                  num_workers=0,
                  transform_config=None,
                  collate_fn=default_collate,
-                 pin_memory=True):
+                 pin_memory=True,
+                 persistent_workers=True):
 
         # TODO: charge train to 'train'
         self.train_dir = os.path.join(data_dir, 'val')
@@ -39,7 +40,7 @@ class IMNETDataLoader(DataLoader):
 
         # Subset for debugging
         train_indices = torch.arange(20000)
-        val_indices = torch.arange(2000)
+        val_indices = torch.arange(5000)
         self.train_dataset = Subset(self.train_dataset, train_indices)
         self.val_dataset = Subset(self.train_dataset, val_indices)
 
@@ -68,12 +69,9 @@ class IMNETDataLoader(DataLoader):
             'collate_fn': collate_fn,
             'num_workers': num_workers,
             'pin_memory': pin_memory,
-            'persistent_workers': True,
-            'drop_last': False,
+            'persistent_workers': persistent_workers,
         }
-
-        #TODO: try with pin_memory=True, persistent_workers=True, pin_memory_device=rank?
-        super().__init__(dataset=self.train_dataset,sampler=self.train_sampler, **self.init_kwargs)
+        super().__init__(dataset=self.train_dataset,sampler=self.train_sampler, drop_last=True,**self.init_kwargs)
 
     def get_transforms(self, transform_config, is_train):
         resize_im = transform_config['input_size'] > 32

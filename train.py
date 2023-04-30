@@ -43,12 +43,11 @@ def main(config):
 def main_worker_function(rank, world_size, is_distributed, config):
 
     if is_distributed:
-        #device = torch.device(f'cuda:{config["gpu_list"][rank]}')
         device = config['gpu_list'][rank]
         torch.cuda.set_device(device)
         print("Running main worker function on device: {}".format(device))
         torch.distributed.init_process_group('nccl', init_method='env://', world_size=world_size, rank=rank)
-        # TODO:more info about error
+        # TODO:more info about warning inside DDP
         #os.environ['NCCL_DEBUG'] = 'TRACE'
 
     else:
@@ -67,7 +66,6 @@ def main_worker_function(rank, world_size, is_distributed, config):
     model = model.to(device)
     if is_distributed:
         # If BatchNorm is used, convert it to SyncBatchNorm
-        # TODO: warning comes from here
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[device])
     # TODO: torch.compile() for faster inference HERE, are savable?
 

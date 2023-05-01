@@ -32,7 +32,6 @@ def main(config):
         dev_ids = ["cuda:{0}".format(x) for x in config['gpu_list']]
         print("Using DistributedDataParallel on these devices: {}".format(dev_ids))
 
-        # TODO: fix printing, metrics and model state dict when ddp is used
         torch.multiprocessing.spawn(main_worker_function, nprocs=n_gpus, args=(n_gpus, is_distributed, config))
 
     else:
@@ -67,10 +66,9 @@ def main_worker_function(rank, world_size, is_distributed, config):
     if is_distributed:
         # If BatchNorm is used, convert it to SyncBatchNorm
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[device])
-    # TODO: torch.compile() for faster inference HERE, are savable?
+    # TODO: torch.compile() failing
 
     # get function handles of loss and metrics
-    # TODO: criterion to device?
     criterion = config.init_obj('loss', module_loss, rank=rank)
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 

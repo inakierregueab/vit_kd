@@ -118,7 +118,6 @@ class BaseTrainer:
         :param save_best: if True, rename the saved checkpoint to 'model_best.pth'
         """
         arch = type(self.model).__name__
-        # TODO: when using TandemNet, save only the student model?
         state = {
             'arch': arch,
             'epoch': epoch,

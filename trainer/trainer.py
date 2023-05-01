@@ -129,7 +129,6 @@ class Trainer(BaseTrainer):
 
         start_time = time()
 
-        # TODO: us is_valid_distributed flag
         if self.is_distributed:
             self.valid_data_loader.sampler.set_epoch(epoch)
 

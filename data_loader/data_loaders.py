@@ -28,7 +28,6 @@ class IMNETDataLoader(DataLoader):
                  pin_memory=True,
                  persistent_workers=True):
 
-        # TODO: charge train to 'train'
         self.train_dir = os.path.join(data_dir, 'val')
         self.val_dir = os.path.join(data_dir, 'val')
 
@@ -45,7 +44,6 @@ class IMNETDataLoader(DataLoader):
         self.val_dataset = Subset(self.train_dataset, val_indices)
 
         if is_distributed:
-            # TODO: test with RepeatedAugmentationSampler
             if repeated_aug:
                 self.train_sampler = RASampler(self.train_dataset, num_replicas=world_size, rank=rank, shuffle=True)
             else:
@@ -63,7 +61,6 @@ class IMNETDataLoader(DataLoader):
             self.train_sampler = RandomSampler(self.train_dataset)
             self.valid_sampler = SequentialSampler(self.val_dataset)
 
-        # TODO: use persistent workers?
         self.init_kwargs = {
             'batch_size': batch_size,
             'collate_fn': collate_fn,

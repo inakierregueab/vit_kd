@@ -1,6 +1,6 @@
 {
-    "name": "1_128_25e-5",
-    "gpu_list": [0],
+    "name": "TandemTPS",
+    "gpu_list": [0,1,2,3],
 
     "arch": {
         "type": "ViTB16",
@@ -39,7 +39,7 @@
     "optimizer": {
         "type": "AdamW",
         "args":{
-            "lr": 25e-5,
+            "lr": 5e-4,
             "betas": [0,0],
             "weight_decay": 0.05
         }

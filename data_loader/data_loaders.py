@@ -39,7 +39,7 @@ class IMNETDataLoader(DataLoader):
 
         # Subset for debugging
         train_indices = torch.arange(20000)
-        val_indices = torch.arange(2000)
+        val_indices = torch.arange(5000)
         self.train_dataset = Subset(self.train_dataset, train_indices)
         self.val_dataset = Subset(self.train_dataset, val_indices)
 

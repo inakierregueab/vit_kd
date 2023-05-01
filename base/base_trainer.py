@@ -25,6 +25,7 @@ class BaseTrainer:
 
         cfg_trainer = config['trainer']
         self.epochs = cfg_trainer['epochs']
+        self.val_freq = cfg_trainer['val_freq']
         self.save_period = cfg_trainer['save_period']
         self.monitor = cfg_trainer.get('monitor', 'off')
 
@@ -79,15 +80,15 @@ class BaseTrainer:
                     self.logger.info('    {:15s}: {}'.format(str(key), value))
 
                 # Define score for optuna and prune if necessary
-                # TODO: should be val_acc?
-                score = log['val_loss']
+                # TODO: val_freq must be one epoch
+                score = log['val_accuracy']
                 self.trial.report(score, epoch)
                 if self.trial.should_prune():
                     raise optuna.TrialPruned()
 
                 # evaluate model performance according to configured metric, save best checkpoint as model_best
                 best = False
-                if self.mnt_mode != 'off':
+                if (self.mnt_mode != 'off') & (epoch % self.val_freq == 0):
                     try:
                         # check whether model performance improved or not, according to specified metric(mnt_metric)
                         improved = (self.mnt_mode == 'min' and log[self.mnt_metric] <= self.mnt_best) or \
@@ -108,12 +109,14 @@ class BaseTrainer:
                     if not_improved_count > self.early_stop:
                         self.logger.info("Validation performance didn\'t improve for {} epochs. "
                                          "Training stops.".format(self.early_stop))
+                        if self.is_distributed:
+                            # TODO: error here but exits code
+                            dist.destroy_process_group()
                         break
 
                 if epoch % self.save_period == 0:
                     self._save_checkpoint(epoch, save_best=best)
 
-            # TODO: makes sense? iteration time gets small improvement
             if self.is_distributed:
                 dist.barrier()
 
@@ -130,11 +133,10 @@ class BaseTrainer:
         :param save_best: if True, rename the saved checkpoint to 'model_best.pth'
         """
         arch = type(self.model).__name__
-        # TODO: when using TandemNet, save only the student model?
         state = {
             'arch': arch,
             'epoch': epoch,
-            'state_dict': self.model.state_dict(),
+            'state_dict': self.model.state_dict() if not self.is_distributed else self.model.module.state_dict(),
             'optimizer': self.optimizer.state_dict(),
             'monitor_best': self.mnt_best,
             'config': self.config

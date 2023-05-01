@@ -25,9 +25,9 @@ class IMNETDataLoader(DataLoader):
                  num_workers=0,
                  transform_config=None,
                  collate_fn=default_collate,
-                 pin_memory=True):
+                 pin_memory=True,
+                 persistent_workers=True):
 
-        # TODO: charge train to 'train'
         self.train_dir = os.path.join(data_dir, 'val')
         self.val_dir = os.path.join(data_dir, 'val')
 
@@ -38,13 +38,12 @@ class IMNETDataLoader(DataLoader):
         self.val_dataset = datasets.ImageFolder(self.val_dir, transform=self.val_transform)
 
         # Subset for debugging
-        train_indices = torch.arange(1000)
-        val_indices = torch.arange(100)
+        train_indices = torch.arange(20000)
+        val_indices = torch.arange(5000)
         self.train_dataset = Subset(self.train_dataset, train_indices)
         self.val_dataset = Subset(self.train_dataset, val_indices)
 
         if is_distributed:
-            # TODO: test with RepeatedAugmentationSampler
             if repeated_aug:
                 self.train_sampler = RASampler(self.train_dataset, num_replicas=world_size, rank=rank, shuffle=True)
             else:
@@ -62,15 +61,14 @@ class IMNETDataLoader(DataLoader):
             self.train_sampler = RandomSampler(self.train_dataset)
             self.valid_sampler = SequentialSampler(self.val_dataset)
 
-        # TODO: use persistent workers?
         self.init_kwargs = {
             'batch_size': batch_size,
             'collate_fn': collate_fn,
-            'num_workers': 0 if is_distributed else num_workers,
-            'pin_memory': False if is_distributed else pin_memory,
+            'num_workers': num_workers,
+            'pin_memory': pin_memory,
+            'persistent_workers': persistent_workers,
         }
-
-        super().__init__(dataset=self.train_dataset,sampler=self.train_sampler, drop_last=False, **self.init_kwargs)
+        super().__init__(dataset=self.train_dataset,sampler=self.train_sampler, drop_last=True,**self.init_kwargs)
 
     def get_transforms(self, transform_config, is_train):
         resize_im = transform_config['input_size'] > 32

@@ -31,9 +31,9 @@ def main(config, trials=None):
         config['optimizer']['args']['weight_decay'] = trials.suggest_float('weight_decay', 0.05, 0.5)
         config['optimizer']['betas'] = [trials.suggest_float('beta1', 0.0, 1.0), trials.suggest_float('beta2', 0.0, 1.0)]
 
-        config['mixup']['args']['mixup_alpha'] = trials.suggest_float('m_alpha', 0.5, 1.0)
-        config['mixup']['args']['cutmix_alpha'] = trials.suggest_float('c_alpha', 0.5, 1.0)
-        config['mixup']['args']['label_smoothing'] = trials.suggest_float('label_smoothing', 0.0, 0.5)
+        config['mixup']['mixup_alpha'] = trials.suggest_float('m_alpha', 0.5, 1.0)
+        config['mixup']['cutmix_alpha'] = trials.suggest_float('c_alpha', 0.5, 1.0)
+        config['mixup']['label_smoothing'] = trials.suggest_float('label_smoothing', 0.0, 0.5)
 
         config['lr_scheduler']['warmup_epochs'] = trials.suggest_int('warmup_epochs', 3, 8)
 
@@ -45,7 +45,7 @@ def main(config, trials=None):
 
     if is_distributed:
         os.environ['MASTER_ADDR'] = 'localhost'
-        os.environ['MASTER_PORT'] = '12355'
+        os.environ['MASTER_PORT'] = str(12355 + config['gpu_list'][0])
 
         print("Using multiprocessing...")
         dev_ids = ["cuda:{0}".format(x) for x in config['gpu_list']]
@@ -63,6 +63,7 @@ def main_worker_function(rank, world_size, is_distributed, config, trials, score
 
     if is_distributed:
         device = config['gpu_list'][rank]
+        torch.cuda.set_device(device)
         print("Running main worker function on device: {}".format(device))
         dist.init_process_group('nccl', init_method='env://', world_size=world_size, rank=rank)
     else:
@@ -82,7 +83,7 @@ def main_worker_function(rank, world_size, is_distributed, config, trials, score
     if is_distributed:
         # If BatchNorm is used, convert it to SyncBatchNorm
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[device])
-    # TODO: torch.compile() for faster inference HERE, are savable?
+    # TODO: torch.compile() failing
 
     # get function handles of loss and metrics
     criterion = config.init_obj('loss', module_loss, rank=rank)
@@ -130,11 +131,11 @@ if __name__ == '__main__':
     # Start hyperparameter optimization
     # Guide: https://towardsdatascience.com/hyperparameter-tuning-of-neural-networks-with-optuna-and-pytorch-22e179efc837
     study = optuna.create_study(
-        direction='minimize',
+        direction='maximize',
         sampler=optuna.samplers.TPESampler(seed=123),
         pruner=optuna.pruners.MedianPruner()
     )
-    study.optimize(lambda trial: main(config, trial), n_trials=10)
+    study.optimize(lambda trial: main(config, trial), n_trials=2)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.COMPLETE])

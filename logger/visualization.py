@@ -57,12 +57,13 @@ class TensorboardWriter():
         if name in self.tb_writer_ftns:
             add_data = getattr(self.writer, name, None)
 
-            def wrapper(tag, data, *args, **kwargs):
+            def wrapper(tag, data, epoch=None, *args, **kwargs):
                 if add_data is not None:
                     # add mode(train/valid) tag
                     if name not in self.tag_mode_exceptions:
                         tag = '{}/{}'.format(tag, self.mode)
-                    add_data(tag, data, self.step, *args, **kwargs)
+                    step = self.step if epoch is None else epoch
+                    add_data(tag, data, step, *args, **kwargs)
             return wrapper
         else:
             # default action for returning methods defined in this class, set_step() for instance.

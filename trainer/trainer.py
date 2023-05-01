@@ -37,7 +37,7 @@ class Trainer(BaseTrainer):
         self.train_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.valid_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
 
-        self.mixup_fn = Mixup(**config['mixup']['args'])
+        self.mixup_fn = Mixup(**config['mixup'])
 
     def _train_epoch(self, epoch):
         """
@@ -57,10 +57,7 @@ class Trainer(BaseTrainer):
 
         for batch_idx, (data, target) in enumerate(self.data_loader):
             data, target = data.to(self.device), target.to(self.device)
-
-            # TODO: delete flag, simply set prob to 0
-            if self.config['mixup']['flag']:
-                data, target = self.mixup_fn(data, target)
+            data, target = self.mixup_fn(data, target)
 
             self.optimizer.zero_grad()
             output = self.model(data)
@@ -69,6 +66,10 @@ class Trainer(BaseTrainer):
             self.optimizer.step()
 
             if self.is_distributed:
+                if not isinstance(output, torch.Tensor):
+                    output, _ = output
+                else:
+                    output = output
                 torch.distributed.reduce(loss, dst=0, op=torch.distributed.ReduceOp.SUM)
                 torch.distributed.reduce(output, dst=0, op=torch.distributed.ReduceOp.SUM)
 
@@ -82,7 +83,10 @@ class Trainer(BaseTrainer):
                 iteration_time = time()
                 elapsed_time = iteration_time - start_time
                 iter_time = iteration_time - previous_iteration_time
-                self.writer.add_scalar('time/iter', iter_time)
+                # First batch of epoch is very slow, avoid writing,
+                # explanation: https://discuss.pytorch.org/t/data-loader-first-batch-from-each-epoch-is-slow/92844
+                if batch_idx % self.len_epoch != 0:
+                    self.writer.add_scalar('time/iter', iter_time)
 
                 if batch_idx % self.log_step == 0:
                     self.logger.info('Train Epoch: {} {} Loss: {:.6f} - Elapsed Time: {:.3f} - Iteration time: {:.3f}'.format(
@@ -97,12 +101,16 @@ class Trainer(BaseTrainer):
 
         if self.rank == 0:
             log = self.train_metrics.result()
-            self.writer.add_scalar('time/epoch', elapsed_time)
+            self.writer.add_scalar('time/epoch', elapsed_time, epoch=epoch)
+            self.writer.add_scalar('loss/loss_per_epoch', log['loss'], epoch=epoch)
 
-        if self.do_validation:
+        if self.do_validation & (epoch % self.val_freq == 0):
             val_log = self._valid_epoch(epoch)
             if self.rank == 0:
                 log.update(**{'val_'+k : v for k, v in val_log.items()})
+                self.writer.add_scalar('loss/loss_per_epoch_val', log['val_loss'], epoch=epoch)
+                self.writer.add_scalar('accuracy/acc_per_epoch_val', log['val_accuracy'], epoch=epoch)
+                self.writer.add_scalar('top_k_acc/tka_per_epoch_val', log['val_top_k_acc'], epoch=epoch)
 
         if self.lr_scheduler is not None:
             # timm scheduler needs epoch
@@ -121,7 +129,6 @@ class Trainer(BaseTrainer):
 
         start_time = time()
 
-        # TODO: us is_valid_distributed flag
         if self.is_distributed:
             self.valid_data_loader.sampler.set_epoch(epoch)
 
@@ -135,6 +142,10 @@ class Trainer(BaseTrainer):
                 loss = self.criterion(output, target)
 
                 if self.is_distributed:
+                    if not isinstance(output, torch.Tensor):
+                        output, _ = output
+                    else:
+                        output = output
                     torch.distributed.reduce(loss, dst=0, op=torch.distributed.ReduceOp.SUM)
                     torch.distributed.reduce(output, dst=0, op=torch.distributed.ReduceOp.SUM)
 
@@ -144,11 +155,6 @@ class Trainer(BaseTrainer):
                     for met in self.metric_ftns:
                         self.valid_metrics.update(met.__name__, met(output/self.world_size, target, is_logits=False))
 
-        # TODO: what are we saving down here?
-        """if self.rank == 0:
-            # add histogram of model parameters to the tensorboard
-            for name, p in self.model.named_parameters():
-                self.writer.add_histogram(name, p, bins='auto')"""
         if self.rank == 0:
             print("Validation Elapsed Time: {:.3f}".format(time() - start_time))
         return self.valid_metrics.result() if self.rank == 0 else None

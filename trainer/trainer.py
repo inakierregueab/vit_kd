@@ -98,12 +98,15 @@ class Trainer(BaseTrainer):
         if self.rank == 0:
             log = self.train_metrics.result()
             self.writer.add_scalar('time/epoch', elapsed_time, epoch=epoch)
-            self.writer.add_scalar('loss/loss_per_epoch', loss.item()/self.world_size, epoch=epoch)  #Loss from last batch
+            self.writer.add_scalar('loss/loss_per_epoch', log['loss'], epoch=epoch)
 
         if self.do_validation & (epoch % self.val_freq == 0):
             val_log = self._valid_epoch(epoch)
             if self.rank == 0:
                 log.update(**{'val_'+k : v for k, v in val_log.items()})
+                self.writer.add_scalar('loss/loss_per_epoch_val', log['val_loss'], epoch=epoch)
+                self.writer.add_scalar('accuracy/acc_per_epoch_val', log['val_accuracy'], epoch=epoch)
+                self.writer.add_scalar('top_k_acc/tka_per_epoch_val', log['val_top_k_acc'], epoch=epoch)
 
         if self.lr_scheduler is not None:
             # timm scheduler needs epoch

@@ -1,6 +1,6 @@
 {
-    "name": "4_128_5e-4_val",
-    "gpu_list": [0,1,2,3],
+    "name": "1_128_25e-5",
+    "gpu_list": [0],
 
     "arch": {
         "type": "ViTB16",
@@ -27,22 +27,19 @@
         }
     },
     "mixup": {
-        "flag": true,
-        "args": {
-            "mixup_alpha": 0.8,
-            "cutmix_alpha": 1,
-            "cutmix_minmax": null,
-            "prob": 1.0,
-            "switch_prob": 0.5,
-            "mode": "batch",
-            "label_smoothing": 0.1,
-            "num_classes": 1000
-        }
+        "mixup_alpha": 0.8,
+        "cutmix_alpha": 1,
+        "cutmix_minmax": null,
+        "prob": 1.0,
+        "switch_prob": 0.5,
+        "mode": "batch",
+        "label_smoothing": 0.1,
+        "num_classes": 1000
     },
     "optimizer": {
         "type": "AdamW",
         "args":{
-            "lr": 5e-4,
+            "lr": 25e-5,
             "betas": [0,0],
             "weight_decay": 0.05
         }
@@ -66,7 +63,8 @@
         "warmup_epochs": 5
     },
     "trainer": {
-        "epochs": 300,
+        "epochs": 10,
+        "val_freq": 1,
 
         "save_dir": "./../saved/",
         "save_period": 50,

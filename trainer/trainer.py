@@ -66,6 +66,10 @@ class Trainer(BaseTrainer):
             self.optimizer.step()
 
             if self.is_distributed:
+                if not isinstance(output, torch.Tensor):
+                    output, _ = output
+                else:
+                    output = output
                 torch.distributed.reduce(loss, dst=0, op=torch.distributed.ReduceOp.SUM)
                 torch.distributed.reduce(output, dst=0, op=torch.distributed.ReduceOp.SUM)
 
@@ -139,6 +143,10 @@ class Trainer(BaseTrainer):
                 loss = self.criterion(output, target)
 
                 if self.is_distributed:
+                    if not isinstance(output, torch.Tensor):
+                        output, _ = output
+                    else:
+                        output = output
                     torch.distributed.reduce(loss, dst=0, op=torch.distributed.ReduceOp.SUM)
                     torch.distributed.reduce(output, dst=0, op=torch.distributed.ReduceOp.SUM)
 

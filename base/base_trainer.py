@@ -81,7 +81,7 @@ class BaseTrainer:
 
                 # Define score for optuna and prune if necessary
                 # TODO: val_freq must be one epoch
-                score = log['val_accuracy']
+                score = log['val_loss']
                 self.trial.report(score, epoch)
                 if self.trial.should_prune():
                     raise optuna.TrialPruned()
@@ -109,10 +109,11 @@ class BaseTrainer:
                     if not_improved_count > self.early_stop:
                         self.logger.info("Validation performance didn\'t improve for {} epochs. "
                                          "Training stops.".format(self.early_stop))
-                        if self.is_distributed:
+                        raise optuna.exceptions.TrialPruned()
+                        #if self.is_distributed:
                             # TODO: error here but exits code
-                            dist.destroy_process_group()
-                        break
+                            #dist.destroy_process_group()
+                        #break
 
                 if epoch % self.save_period == 0:
                     self._save_checkpoint(epoch, save_best=best)
@@ -120,9 +121,9 @@ class BaseTrainer:
             if self.is_distributed:
                 dist.barrier()
 
-        # Output final result in validation set
-        if self.rank == 0:
-            self.scorer.set_score(score)
+            # Output final result in validation set
+            if self.rank == 0:
+                self.scorer.set_score(score)
 
     def _save_checkpoint(self, epoch, save_best=False):
         """

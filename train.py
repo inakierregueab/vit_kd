@@ -27,15 +27,17 @@ def main(config, trials=None):
 
     # Hyperparameter optimization
     if trials is not None:
-        config['optimizer']['args']['lr'] = trials.suggest_float('lr', 0.0001, 0.01)
-        config['optimizer']['args']['weight_decay'] = trials.suggest_float('weight_decay', 0.05, 0.5)
+        config['optimizer']['args']['lr'] = trials.suggest_float('lr', 0.0001, 0.005)
+        config['optimizer']['args']['weight_decay'] = trials.suggest_float('weight_decay', 0.05, 0.3)
         config['optimizer']['betas'] = [trials.suggest_float('beta1', 0.0, 1.0), trials.suggest_float('beta2', 0.0, 1.0)]
 
         config['mixup']['mixup_alpha'] = trials.suggest_float('m_alpha', 0.5, 1.0)
         config['mixup']['cutmix_alpha'] = trials.suggest_float('c_alpha', 0.5, 1.0)
-        config['mixup']['label_smoothing'] = trials.suggest_float('label_smoothing', 0.0, 0.5)
+        config['mixup']['label_smoothing'] = trials.suggest_float('label_smoothing', 0.0, 0.3)
 
-        config['lr_scheduler']['warmup_epochs'] = trials.suggest_int('warmup_epochs', 3, 8)
+        config['lr_scheduler']['warmup_epochs'] = trials.suggest_int('warmup_epochs', 2, 7)
+
+        config['data_loader']['args']['repeated_aug'] = trials.suggest_categorical('repeated_aug', [True, False])
 
 
     n_gpus = len(config['gpu_list'])
@@ -51,7 +53,10 @@ def main(config, trials=None):
         dev_ids = ["cuda:{0}".format(x) for x in config['gpu_list']]
         print("Using DistributedDataParallel on these devices: {}".format(dev_ids))
 
-        torch.multiprocessing.spawn(main_worker_function, nprocs=n_gpus, args=(n_gpus, is_distributed, config, trials, scorer))
+        try:
+            torch.multiprocessing.spawn(main_worker_function, nprocs=n_gpus, args=(n_gpus, is_distributed, config, trials, scorer))
+        except torch.multiprocessing.ProcessRaisedException:
+            pass
     else:
         print("Not using multiprocessing...")
         main_worker_function(0, n_gpus, is_distributed, config, trials, scorer)
@@ -131,11 +136,11 @@ if __name__ == '__main__':
     # Start hyperparameter optimization
     # Guide: https://towardsdatascience.com/hyperparameter-tuning-of-neural-networks-with-optuna-and-pytorch-22e179efc837
     study = optuna.create_study(
-        direction='maximize',
+        direction='minimize',
         sampler=optuna.samplers.TPESampler(seed=123),
         pruner=optuna.pruners.MedianPruner()
     )
-    study.optimize(lambda trial: main(config, trial), n_trials=2)
+    study.optimize(lambda trial: main(config, trial), n_trials=50)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.COMPLETE])

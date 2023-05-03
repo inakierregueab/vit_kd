@@ -1,5 +1,5 @@
 {
-    "name": "4_128_5e-4_val",
+    "name": "ViTB16_gridsearch",
     "gpu_list": [0,1,2,3],
 
     "arch": {
@@ -63,11 +63,11 @@
         "warmup_epochs": 5
     },
     "trainer": {
-        "epochs": 2,
+        "epochs": 100,
         "val_freq": 1,
 
         "save_dir": "./../saved/",
-        "save_period": 50,
+        "save_period": 150,
         "verbosity": 2,
         
         "monitor": "min val_loss",

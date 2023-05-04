@@ -28,7 +28,7 @@ class IMNETDataLoader(DataLoader):
                  pin_memory=True,
                  persistent_workers=True):
 
-        self.train_dir = os.path.join(data_dir, 'val')
+        self.train_dir = os.path.join(data_dir, 'train')
         self.val_dir = os.path.join(data_dir, 'val')
 
         self.train_transform = self.get_transforms(transform_config, is_train=True)
@@ -38,8 +38,8 @@ class IMNETDataLoader(DataLoader):
         self.val_dataset = datasets.ImageFolder(self.val_dir, transform=self.val_transform)
 
         # Subset for debugging
-        train_indices = torch.arange(20000)
-        val_indices = torch.arange(5000)
+        train_indices = torch.randperm(len(self.train_dataset))[:200000]
+        val_indices = torch.randperm(len(self.val_dataset))[:10000]
         self.train_dataset = Subset(self.train_dataset, train_indices)
         self.val_dataset = Subset(self.train_dataset, val_indices)
 

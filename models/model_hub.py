@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 from models.vision_transfromer import VisionTransformer
+from models.modified_vit import ModVisionTransformer
+from utils.util import load_pretrained_weights
 
 
 
@@ -18,6 +20,26 @@ class ViTB16(VisionTransformer):
 
 
 class Teacher_ViTB16(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.model = ModVisionTransformer(
+            image_size=224,
+            patch_size=16,
+            num_layers=12,
+            num_heads=12,
+            hidden_dim=768,
+            mlp_dim=3072,
+        )
+        self.model = load_pretrained_weights(self.model,'IMAGENET1K_V1')
+
+        for param in self.model.parameters():
+            param.requires_grad = False
+
+    def forward(self, x):
+        return self.model(x)
+
+
+class Old_Teacher_ViTB16(nn.Module):
     def __init__(self, checkpoint_path):
         super().__init__()
         self.model = ViTB16(as_teacher=True)
@@ -101,7 +123,7 @@ class Student_Ti16(VisionTransformer):
 class TandemTPS(nn.Module):
     def __init__(self):
         super().__init__()
-        self.teacher = Teacher_ViTB16(checkpoint_path='./../data/model_best.pth')
+        self.teacher = Teacher_ViTB16()
         self.proxy_student = ProxyStudent_S16()
 
     def forward(self, x):
@@ -133,7 +155,7 @@ if __name__ == "__main__":
     memory = torch.rand(bs, seq_length, t_hidden_dim)
 
     # Model checks
-    teacher = Teacher_ViTB16(checkpoint_path='./../../data/model_best.pth')
+    teacher = Teacher_ViTB16()  #Teacher_ViTB16(checkpoint_path='./../../data/model_best.pth')
     out = teacher(x)
 
     # 1. Teacher outputs (cls_token, x)

@@ -63,15 +63,15 @@
         "warmup_epochs": 5
     },
     "trainer": {
-        "epochs": 10,
-        "val_freq": 1,
+        "epochs": 100,
+        "val_freq": 5,
 
         "save_dir": "./../saved/",
         "save_period": 50,
         "verbosity": 2,
         
         "monitor": "min val_loss",
-        "early_stop": 10,
+        "early_stop": 7,
 
         "tensorboard": true
     }

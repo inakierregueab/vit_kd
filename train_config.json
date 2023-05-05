@@ -1,5 +1,5 @@
 {
-    "name": "4_128_5e-4_val",
+    "name": "DeiT_params_SoftCE",
     "gpu_list": [0,1,2,3],
 
     "arch": {

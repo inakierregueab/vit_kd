@@ -111,49 +111,6 @@ class modEncoder(nn.Module):
 
         return self.ln(x)
 
-# TODO: ready to be deleted?
-class Encoder(nn.Module):
-    """Transformer Model Encoder for sequence to sequence translation."""
-
-    def __init__(
-            self,
-            seq_length: int,
-            num_layers: int,
-            num_heads: int,
-            hidden_dim: int,
-            mlp_dim: int,
-            dropout: float,
-            attention_dropout: float,
-            norm_layer: Callable[..., torch.nn.Module] = partial(nn.LayerNorm, eps=1e-6),
-            proxy: bool = False,
-    ):
-        super().__init__()
-        # Note that batch_size is on the first dim because
-        # we have batch_first=True in nn.MultiAttention() by default
-        self.pos_embedding = nn.Parameter(torch.empty(1, seq_length, hidden_dim).normal_(std=0.02))  # from BERT
-        self.dropout = nn.Dropout(dropout)
-        layers: OrderedDict[str, nn.Module] = OrderedDict()
-        encoder_block = EncoderBlock if not proxy else ProxyEncoderBlock
-        for i in range(num_layers):
-            layers[f"encoder_layer_{i}"] = encoder_block(
-                num_heads,
-                hidden_dim,
-                mlp_dim,
-                dropout,
-                attention_dropout,
-                norm_layer,
-            )
-        self.layers = nn.Sequential(layers)
-        self.ln = norm_layer(hidden_dim)
-
-    def forward(self, input: torch.Tensor, memory: Optional[torch.Tensor] = None):
-        torch._assert(input.dim() == 3, f"Expected (batch_size, seq_length, hidden_dim) got {input.shape}")
-        input = input + self.pos_embedding
-
-        if memory is None:
-            return self.ln(self.layers(self.dropout(input)))
-        else:
-            return self.ln(self.layers(self.dropout(input), memory))
 
 # TODO: no need, only for __str__ method
 class VisionTransformer(BaseModel):

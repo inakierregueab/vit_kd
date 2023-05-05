@@ -1,7 +1,7 @@
 import numpy as np
 import torch
+import torch.distributed as dist
 
-from torchvision.utils import make_grid
 from timm.data import Mixup
 from time import time
 
@@ -20,7 +20,7 @@ class Trainer(BaseTrainer):
         self.device = device
         self.is_distributed = is_distributed
         self.rank = rank
-        self.world_size = torch.distributed.get_world_size() if is_distributed else 1
+        self.world_size = dist.get_world_size() if is_distributed else 1
         self.data_loader = data_loader
         if len_epoch is None:
             # epoch-based training
@@ -70,14 +70,22 @@ class Trainer(BaseTrainer):
                     output, _ = output
                 else:
                     output = output
-                torch.distributed.reduce(loss, dst=0, op=torch.distributed.ReduceOp.SUM)
-                torch.distributed.reduce(output, dst=0, op=torch.distributed.ReduceOp.SUM)
+                dist.reduce(loss, dst=0, op=dist.ReduceOp.AVG)      # AVG loss across all GPUs
+
+            metrics = {}
+            for met in self.metric_ftns:
+                metric = met(output, target)
+                if self.is_distributed:
+                    dist.reduce(torch.tensor([metric], device=self.rank), dst=0, op=dist.ReduceOp.AVG)   # AVG metric across all GPUs
+                metrics[met.__name__] = metric
+
 
             if self.rank == 0:
                 self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
-                self.train_metrics.update('loss', loss.item()/self.world_size)
-                for met in self.metric_ftns:
-                    self.train_metrics.update(met.__name__, met(output/self.world_size, target))
+                self.train_metrics.update('loss', loss.item())
+                # TODO: Control this
+                for key, value in metrics.items():
+                    self.train_metrics.update(key, value)
 
                 previous_iteration_time = iteration_time
                 iteration_time = time()
@@ -92,7 +100,7 @@ class Trainer(BaseTrainer):
                     self.logger.info('Train Epoch: {} {} Loss: {:.6f} - Elapsed Time: {:.3f} - Iteration time: {:.3f}'.format(
                         epoch,
                         self._progress(batch_idx),
-                        loss.item()/self.world_size,
+                        loss.item(),
                         elapsed_time,
                         iter_time))
 
@@ -124,6 +132,7 @@ class Trainer(BaseTrainer):
         :param epoch: Integer, current training epoch.
         :return: A log that contains information about validation
         """
+        criterion = torch.nn.CrossEntropyLoss()
         self.model.eval()
         self.valid_metrics.reset()
 
@@ -139,21 +148,28 @@ class Trainer(BaseTrainer):
                 data, target = data.to(self.device), target.to(self.device)
 
                 output = self.model(data)
-                loss = self.criterion(output, target)
+                loss = criterion(output, target) #self.criterion(output, target)
 
                 if self.is_distributed:
                     if not isinstance(output, torch.Tensor):
                         output, _ = output
                     else:
                         output = output
-                    torch.distributed.reduce(loss, dst=0, op=torch.distributed.ReduceOp.SUM)
-                    torch.distributed.reduce(output, dst=0, op=torch.distributed.ReduceOp.SUM)
+                    dist.reduce(loss, dst=0, op=dist.ReduceOp.AVG)  # AVG loss across all GPUs
+
+                metrics = {}
+                for met in self.metric_ftns:
+                    metric = met(output, target, is_logits=False)
+                    if self.is_distributed:
+                        dist.reduce(torch.tensor([metric], device=self.rank), dst=0, op=dist.ReduceOp.AVG)  # AVG metric across all GPUs
+                    metrics[met.__name__] = metric
 
                 if self.rank == 0:
                     self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
-                    self.valid_metrics.update('loss', loss.item()/self.world_size)
-                    for met in self.metric_ftns:
-                        self.valid_metrics.update(met.__name__, met(output/self.world_size, target, is_logits=False))
+                    self.valid_metrics.update('loss', loss.item())
+                    # TODO: Control this
+                    for key, value in metrics.items():
+                        self.valid_metrics.update(key, value)
 
         if self.rank == 0:
             print("Validation Elapsed Time: {:.3f}".format(time() - start_time))

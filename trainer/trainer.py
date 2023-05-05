@@ -124,6 +124,7 @@ class Trainer(BaseTrainer):
         :param epoch: Integer, current training epoch.
         :return: A log that contains information about validation
         """
+        criterion = torch.nn.CrossEntropyLoss()
         self.model.eval()
         self.valid_metrics.reset()
 
@@ -139,7 +140,7 @@ class Trainer(BaseTrainer):
                 data, target = data.to(self.device), target.to(self.device)
 
                 output = self.model(data)
-                loss = self.criterion(output, target)
+                loss = criterion(output, target) #self.criterion(output, target)
 
                 if self.is_distributed:
                     if not isinstance(output, torch.Tensor):

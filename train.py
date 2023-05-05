@@ -3,6 +3,7 @@ import collections
 import os
 
 import torch
+import torch.distributed as dist
 import numpy as np
 import data_loader.data_loaders as module_data
 import losses.loss as module_loss
@@ -45,7 +46,7 @@ def main_worker_function(rank, world_size, is_distributed, config):
         device = config['gpu_list'][rank]
         torch.cuda.set_device(device)
         print("Running main worker function on device: {}".format(device))
-        torch.distributed.init_process_group('nccl', init_method='env://', world_size=world_size, rank=rank)
+        dist.init_process_group('nccl', init_method='env://', world_size=world_size, rank=rank)
         # TODO:more info about warning inside DDP
         #os.environ['NCCL_DEBUG'] = 'TRACE'
 
@@ -89,7 +90,7 @@ def main_worker_function(rank, world_size, is_distributed, config):
     trainer.train()
 
     if is_distributed:
-        torch.distributed.destroy_process_group()
+        dist.destroy_process_group()
 
 
 if __name__ == '__main__':

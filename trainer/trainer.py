@@ -1,7 +1,7 @@
 import numpy as np
 import torch
+import torch.distributed as dist
 
-from torchvision.utils import make_grid
 from timm.data import Mixup
 from time import time
 
@@ -20,7 +20,7 @@ class Trainer(BaseTrainer):
         self.device = device
         self.is_distributed = is_distributed
         self.rank = rank
-        self.world_size = torch.distributed.get_world_size() if is_distributed else 1
+        self.world_size = dist.get_world_size() if is_distributed else 1
         self.data_loader = data_loader
         if len_epoch is None:
             # epoch-based training
@@ -70,8 +70,8 @@ class Trainer(BaseTrainer):
                     output, _ = output
                 else:
                     output = output
-                torch.distributed.reduce(loss, dst=0, op=torch.distributed.ReduceOp.SUM)
-                torch.distributed.reduce(output, dst=0, op=torch.distributed.ReduceOp.SUM)
+                dist.reduce(loss, dst=0, op=dist.ReduceOp.SUM)
+                dist.reduce(output, dst=0, op=dist.ReduceOp.SUM)
 
             if self.rank == 0:
                 self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
@@ -146,8 +146,8 @@ class Trainer(BaseTrainer):
                         output, _ = output
                     else:
                         output = output
-                    torch.distributed.reduce(loss, dst=0, op=torch.distributed.ReduceOp.SUM)
-                    torch.distributed.reduce(output, dst=0, op=torch.distributed.ReduceOp.SUM)
+                    dist.reduce(loss, dst=0, op=dist.ReduceOp.SUM)
+                    dist.reduce(output, dst=0, op=dist.ReduceOp.SUM)
 
                 if self.rank == 0:
                     self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')

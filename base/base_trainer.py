@@ -1,4 +1,5 @@
 import torch
+import torch.distributed as dist
 from abc import abstractmethod
 from numpy import inf
 from logger import TensorboardWriter
@@ -100,14 +101,14 @@ class BaseTrainer:
                                          "Training stops.".format(self.early_stop))
                         if self.is_distributed:
                             # TODO: error here but exits code
-                            torch.distributed.destroy_process_group()
+                            dist.destroy_process_group()
                         break
 
                 if epoch % self.save_period == 0:
                     self._save_checkpoint(epoch, save_best=best)
 
             if self.is_distributed:
-                torch.distributed.barrier()
+                dist.barrier()
 
     def _save_checkpoint(self, epoch, save_best=False):
         """

@@ -89,7 +89,7 @@ def main_worker_function(rank, world_size, is_distributed, config):
 
     trainer.train()
 
-    if is_distributed:
+    if is_distributed and dist.is_initialized():
         dist.destroy_process_group(group=None)
 
 

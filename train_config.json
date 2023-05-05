@@ -1,5 +1,5 @@
 {
-    "name": "DeiT_params_SoftCE",
+    "name": "DeiT_params",
     "gpu_list": [0,1,2,3],
 
     "arch": {
@@ -71,7 +71,7 @@
         "verbosity": 2,
         
         "monitor": "min val_loss",
-        "early_stop": 7,
+        "early_stop": 5,
 
         "tensorboard": true
     }

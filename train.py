@@ -90,7 +90,7 @@ def main_worker_function(rank, world_size, is_distributed, config):
     trainer.train()
 
     if is_distributed:
-        dist.destroy_process_group()
+        dist.destroy_process_group(group=None)
 
 
 if __name__ == '__main__':

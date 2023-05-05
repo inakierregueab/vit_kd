@@ -101,7 +101,7 @@ class BaseTrainer:
                                          "Training stops.".format(self.early_stop))
                         if self.is_distributed:
                             # TODO: error here but exits code
-                            dist.destroy_process_group()
+                            dist.destroy_process_group(group=None)
                         break
 
                 if epoch % self.save_period == 0:

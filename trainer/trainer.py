@@ -70,14 +70,22 @@ class Trainer(BaseTrainer):
                     output, _ = output
                 else:
                     output = output
-                dist.reduce(loss, dst=0, op=dist.ReduceOp.SUM)
-                dist.reduce(output, dst=0, op=dist.ReduceOp.SUM)
+                dist.reduce(loss, dst=0, op=dist.ReduceOp.AVG)      # AVG loss across all GPUs
+
+            metrics = {}
+            for met in self.metric_ftns:
+                metric = met(output, target)
+                if self.is_distributed:
+                    dist.reduce(torch.tensor([metric], device=self.rank), dst=0, op=dist.ReduceOp.AVG)   # AVG metric across all GPUs
+                metrics[met.__name__] = metric
+
 
             if self.rank == 0:
                 self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
-                self.train_metrics.update('loss', loss.item()/self.world_size)
-                for met in self.metric_ftns:
-                    self.train_metrics.update(met.__name__, met(output/self.world_size, target))
+                self.train_metrics.update('loss', loss.item())
+                # TODO: Control this
+                for key, value in metrics.items():
+                    self.train_metrics.update(key, value)
 
                 previous_iteration_time = iteration_time
                 iteration_time = time()
@@ -92,7 +100,7 @@ class Trainer(BaseTrainer):
                     self.logger.info('Train Epoch: {} {} Loss: {:.6f} - Elapsed Time: {:.3f} - Iteration time: {:.3f}'.format(
                         epoch,
                         self._progress(batch_idx),
-                        loss.item()/self.world_size,
+                        loss.item(),
                         elapsed_time,
                         iter_time))
 
@@ -147,14 +155,21 @@ class Trainer(BaseTrainer):
                         output, _ = output
                     else:
                         output = output
-                    dist.reduce(loss, dst=0, op=dist.ReduceOp.SUM)
-                    dist.reduce(output, dst=0, op=dist.ReduceOp.SUM)
+                    dist.reduce(loss, dst=0, op=dist.ReduceOp.AVG)  # AVG loss across all GPUs
+
+                metrics = {}
+                for met in self.metric_ftns:
+                    metric = met(output, target, is_logits=False)
+                    if self.is_distributed:
+                        dist.reduce(torch.tensor([metric], device=self.rank), dst=0, op=dist.ReduceOp.AVG)  # AVG metric across all GPUs
+                    metrics[met.__name__] = metric
 
                 if self.rank == 0:
                     self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
-                    self.valid_metrics.update('loss', loss.item()/self.world_size)
-                    for met in self.metric_ftns:
-                        self.valid_metrics.update(met.__name__, met(output/self.world_size, target, is_logits=False))
+                    self.valid_metrics.update('loss', loss.item())
+                    # TODO: Control this
+                    for key, value in metrics.items():
+                        self.valid_metrics.update(key, value)
 
         if self.rank == 0:
             print("Validation Elapsed Time: {:.3f}".format(time() - start_time))

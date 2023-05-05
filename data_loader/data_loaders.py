@@ -1,4 +1,6 @@
 import os
+
+import numpy as np
 import torch
 
 from torchvision import datasets, transforms
@@ -38,16 +40,29 @@ class IMNETDataLoader(DataLoader):
         self.val_dataset = datasets.ImageFolder(self.val_dir, transform=self.val_transform)
 
         # Subset for debugging
-        train_indices = torch.randperm(len(self.train_dataset))[:200000]
-        val_indices = torch.randperm(len(self.val_dataset))[:10000]
-        self.train_dataset = Subset(self.train_dataset, train_indices)
-        self.val_dataset = Subset(self.train_dataset, val_indices)
+        # define the size of your subset
+        train_subset_size = 1024
+        val_subset_size = 512
+        # get the indices of all images in the full dataset
+        train_indices = list(range(len(self.train_dataset)))
+        val_indices = list(range(len(self.val_dataset)))
+        # randomly choose a subset of the indices
+        train_subset_indices = np.random.choice(train_indices, train_subset_size, replace=False)
+        val_subset_indices = np.random.choice(val_indices, val_subset_size, replace=False)
+        # Subset for distributed training
+        torch.distributed.broadcast(torch.tensor(train_subset_indices, device=rank), 0)
+        torch.distributed.broadcast(torch.tensor(val_subset_indices, device=rank), 0)
+        # generate subset
+        torch.distributed.barrier()
+        self.train_sub_dataset = Subset(self.train_dataset, train_subset_indices)
+        self.val_sub_dataset = Subset(self.train_dataset, val_subset_indices)
 
+        # TODO: delete subset when full training
         if is_distributed:
             if repeated_aug:
-                self.train_sampler = RASampler(self.train_dataset, num_replicas=world_size, rank=rank, shuffle=True)
+                self.train_sampler = RASampler(self.train_sub_dataset, num_replicas=world_size, rank=rank, shuffle=True)
             else:
-                self.train_sampler = DistributedSampler(self.train_dataset, num_replicas=world_size, rank=rank,
+                self.train_sampler = DistributedSampler(self.train_sub_dataset, num_replicas=world_size, rank=rank,
                                                         shuffle=True, drop_last=False)
 
             # TODO: add flag for distributed validation
@@ -55,11 +70,11 @@ class IMNETDataLoader(DataLoader):
                 print('Warning: Enabling distributed evaluation with an eval dataset not divisible by process number. '
                       'This will slightly alter validation results as extra duplicate entries are added to achieve '
                       'equal num of samples per-process.')
-            self.valid_sampler = DistributedSampler(self.val_dataset, num_replicas=world_size, rank=rank,
+            self.valid_sampler = DistributedSampler(self.val_sub_dataset, num_replicas=world_size, rank=rank,
                                                     shuffle=False, drop_last=False)
         else:
-            self.train_sampler = RandomSampler(self.train_dataset)
-            self.valid_sampler = SequentialSampler(self.val_dataset)
+            self.train_sampler = RandomSampler(self.train_sub_dataset)
+            self.valid_sampler = SequentialSampler(self.val_sub_dataset)
 
         self.init_kwargs = {
             'batch_size': batch_size,
@@ -68,7 +83,7 @@ class IMNETDataLoader(DataLoader):
             'pin_memory': pin_memory,
             'persistent_workers': persistent_workers,
         }
-        super().__init__(dataset=self.train_dataset,sampler=self.train_sampler, drop_last=True,**self.init_kwargs)
+        super().__init__(dataset=self.train_sub_dataset,sampler=self.train_sampler, drop_last=True,**self.init_kwargs)
 
     def get_transforms(self, transform_config, is_train):
         resize_im = transform_config['input_size'] > 32
@@ -102,7 +117,7 @@ class IMNETDataLoader(DataLoader):
         return transforms.Compose(t)
 
     def split_validation(self):
-        return DataLoader(dataset=self.val_dataset, sampler=self.valid_sampler, drop_last=False,  **self.init_kwargs)
+        return DataLoader(dataset=self.val_sub_dataset, sampler=self.valid_sampler, drop_last=False,  **self.init_kwargs)
 
 
 

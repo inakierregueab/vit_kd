@@ -151,7 +151,7 @@ class Trainer(BaseTrainer):
                     output, _ = output
                 else:
                     output = output
-                loss = criterion(output, target) #self.criterion(output, target)
+                loss = criterion(output, target)
 
                 if self.is_distributed:
                     dist.reduce(loss, dst=0, op=dist.ReduceOp.AVG)  # AVG loss across all GPUs

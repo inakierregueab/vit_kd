@@ -41,8 +41,8 @@ class IMNETDataLoader(DataLoader):
 
         # Subset for debugging
         # define the size of your subset
-        train_subset_size = 200000
-        val_subset_size = 10000
+        train_subset_size = 100000
+        val_subset_size = 5000
         # get the indices of all images in the full dataset
         train_indices = list(range(len(self.train_dataset)))
         val_indices = list(range(len(self.val_dataset)))

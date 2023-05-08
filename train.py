@@ -1,6 +1,8 @@
 import argparse
 import collections
 import os
+import pickle
+
 import optuna
 
 import torch
@@ -141,6 +143,11 @@ if __name__ == '__main__':
         pruner=optuna.pruners.MedianPruner()
     )
     study.optimize(lambda trial: main(config, trial), n_trials=50)
+
+    # TODO: change destination
+    file = open('./../saved/study.pkl', 'wb')
+    pickle.dump(study, file)
+    file.close()
 
     pruned_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.COMPLETE])

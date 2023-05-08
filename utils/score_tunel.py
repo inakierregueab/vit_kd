@@ -6,14 +6,14 @@ class Scorer:
 
     def set_score(self, score):
         if self.is_distributed:
-            with open('score.txt', 'w') as f:
+            with open('./../saved/score.txt', 'w') as f:
                 f.write(str(score))
         else:
             self.score = score
 
     def get_score(self):
         if self.is_distributed:
-            with open('score.txt', 'r') as f:
+            with open('./../saved/score.txt', 'r') as f:
                 score = float(f.read())
         else:
             score = self.score

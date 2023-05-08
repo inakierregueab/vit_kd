@@ -146,15 +146,14 @@ class Trainer(BaseTrainer):
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
-
                 output = self.model(data)
+                if not isinstance(output, torch.Tensor):
+                    output, _ = output
+                else:
+                    output = output
                 loss = criterion(output, target) #self.criterion(output, target)
 
                 if self.is_distributed:
-                    if not isinstance(output, torch.Tensor):
-                        output, _ = output
-                    else:
-                        output = output
                     dist.reduce(loss, dst=0, op=dist.ReduceOp.AVG)  # AVG loss across all GPUs
 
                 metrics = {}

@@ -1,16 +1,16 @@
 {
-    "name": "DeiT_params",
-    "gpu_list": [0,1,2,3],
+    "name": "DeiT_params_TPS_soft",
+    "gpu_list": [0,1],
 
     "arch": {
-        "type": "ViTB16",
+        "type": "TandemTPS",
         "args": {}
     },
     "data_loader": {
         "type": "IMNETDataLoader",
         "args":{
             "data_dir": "./../data/",
-            "batch_size": 128,
+            "batch_size": 256,
             "num_workers": 8,
             "pin_memory": true,
             "persistent_workers": true,
@@ -47,7 +47,7 @@
     "loss": {
         "type": "DistillationLoss",
         "args": {
-            "distillation_type": "none",
+            "distillation_type": "soft",
             "alpha": 0.5,
             "tau": 2
         }

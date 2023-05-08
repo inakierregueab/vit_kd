@@ -6,6 +6,7 @@ from itertools import repeat
 from collections import OrderedDict
 
 from timm.scheduler import create_scheduler
+from torch.hub import load_state_dict_from_url
 from torchvision.models import ViT_B_16_Weights
 
 from utils.param_store import ParameterStore
@@ -57,7 +58,7 @@ def build_lr_scheduler(config, optimizer):
 
 def load_pretrained_weights(model, weights='IMAGENET1K_V1'):
     weights = ViT_B_16_Weights.verify(weights)
-    state_dict = weights.get_state_dict(progress=True)
+    state_dict = load_state_dict_from_url(weights.url, model_dir='./../saved/weights/')
     model.load_state_dict(state_dict)
     return model
 

@@ -8,8 +8,7 @@ from timm.loss import SoftTargetCrossEntropy
 class DistillationLoss(nn.Module):
     def __init__(self, distillation_type='none', alpha=0, tau=1, rank=0):
         super().__init__()
-        # TODO: base critarion switch to softCE when using label smoothing
-        self.base_criterion = SoftTargetCrossEntropy() #F.cross_entropy
+        self.base_criterion = SoftTargetCrossEntropy()
         assert distillation_type in ['none', 'soft', 'hard']
         self.distillation_type = distillation_type
         if rank == 0:

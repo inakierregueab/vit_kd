@@ -89,7 +89,6 @@ class Trainer(BaseTrainer):
                 self.writer.add_scalar('loss/base_loss', base_loss.item())
                 self.writer.add_scalar('loss/dist_loss', dist_loss.item())
 
-                # TODO: Control this
                 for key, value in metrics.items():
                     self.train_metrics.update(key, value)
 
@@ -172,7 +171,7 @@ class Trainer(BaseTrainer):
                 if self.rank == 0:
                     self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
                     self.valid_metrics.update('loss', loss.item())
-                    # TODO: Control this
+
                     for key, value in metrics.items():
                         self.valid_metrics.update(key, value)
 

@@ -44,7 +44,7 @@ class DistillationLoss(nn.Module):
             distill_loss = F.cross_entropy(s_output, t_output.argmax(dim=1))
 
         loss = base_loss * (1-self.alpha) + distill_loss * self.alpha
-        return loss
+        return loss, base_loss, distill_loss
 
 
 

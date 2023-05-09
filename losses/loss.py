@@ -9,7 +9,7 @@ class DistillationLoss(nn.Module):
     def __init__(self, distillation_type='none', alpha=0, tau=1, rank=0):
         super().__init__()
         self.base_criterion = SoftTargetCrossEntropy()
-        assert distillation_type in ['none', 'soft', 'hard']
+        assert distillation_type in ['none', 'soft_kl', 'soft_mse', 'hard']
         self.distillation_type = distillation_type
         if rank == 0:
             print(f'Distillation type is {distillation_type}')
@@ -29,15 +29,19 @@ class DistillationLoss(nn.Module):
         if self.distillation_type == 'none':
             return base_loss, base_loss, base_loss
 
-        elif self.distillation_type == 'soft':
+        elif self.distillation_type == 'soft_kl':
             T = self.tau
             distill_loss = F.kl_div(
                 # Use LogSoftmax for numerical stability
                 F.log_softmax(s_output/T, dim=1),
                 F.log_softmax(t_output/T, dim=1),
-                reduction='sum',
+                reduction='batchmean',
                 log_target=True
-            ) * (T*T)/s_output.numel()
+            ) * (T*T)
+
+        elif self.distillation_type == 'soft_mse':
+            # More info: https://arxiv.org/pdf/2105.08919.pdf
+            distill_loss = F.mse_loss(s_output, t_output)
 
         elif self.distillation_type == 'hard':
             distill_loss = F.cross_entropy(s_output, t_output.argmax(dim=1))

@@ -21,7 +21,7 @@ services:
       - '.:/app'
       - '/data-fast/128-data1/ierregue/ImageNet-1k:/data'
       - '/data-slow/hupba/ierregue/research/vit_kd/saved:/saved'
-    command: bash -c "CUDA_DEVICE_ORDER=PCI_BUS_ID python train.py --device 0,3,4,6"
+    command: bash -c "CUDA_DEVICE_ORDER=PCI_BUS_ID python train.py --device 3,6"
     deploy:
       resources:
         reservations:

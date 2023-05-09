@@ -61,16 +61,19 @@ class Trainer(BaseTrainer):
 
             self.optimizer.zero_grad()
             output = self.model(data)
-            loss = self.criterion(output, target)
+            loss, base_loss, dist_loss = self.criterion(output, target)
             loss.backward()
             self.optimizer.step()
 
+            if not isinstance(output, torch.Tensor):
+                output, _ = output
+            else:
+                output = output
+
             if self.is_distributed:
-                if not isinstance(output, torch.Tensor):
-                    output, _ = output
-                else:
-                    output = output
                 dist.reduce(loss, dst=0, op=dist.ReduceOp.AVG)      # AVG loss across all GPUs
+                dist.reduce(base_loss, dst=0, op=dist.ReduceOp.AVG)
+                dist.reduce(dist_loss, dst=0, op=dist.ReduceOp.AVG)
 
             metrics = {}
             for met in self.metric_ftns:
@@ -83,7 +86,9 @@ class Trainer(BaseTrainer):
             if self.rank == 0:
                 self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
                 self.train_metrics.update('loss', loss.item())
-                # TODO: Control this
+                self.writer.add_scalar('loss/base_loss', base_loss.item())
+                self.writer.add_scalar('loss/dist_loss', dist_loss.item())
+
                 for key, value in metrics.items():
                     self.train_metrics.update(key, value)
 
@@ -146,15 +151,14 @@ class Trainer(BaseTrainer):
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
-
                 output = self.model(data)
-                loss = criterion(output, target) #self.criterion(output, target)
+                if not isinstance(output, torch.Tensor):
+                    output, _ = output
+                else:
+                    output = output
+                loss = criterion(output, target)
 
                 if self.is_distributed:
-                    if not isinstance(output, torch.Tensor):
-                        output, _ = output
-                    else:
-                        output = output
                     dist.reduce(loss, dst=0, op=dist.ReduceOp.AVG)  # AVG loss across all GPUs
 
                 metrics = {}
@@ -167,7 +171,7 @@ class Trainer(BaseTrainer):
                 if self.rank == 0:
                     self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
                     self.valid_metrics.update('loss', loss.item())
-                    # TODO: Control this
+
                     for key, value in metrics.items():
                         self.valid_metrics.update(key, value)
 

@@ -1,0 +1,25 @@
+{
+    "name": "TEST_",
+    "gpu_list": [0],
+
+    "arch": {
+        "type": "TandemTPS",
+        "args": {}
+    },
+
+    "data_loader": {
+        "type": "TestLoader",
+        "args":{
+            "data_dir": "./../data/",
+            "batch_size": 64,
+            "num_workers": 4,
+            "pin_memory": true,
+            "persistent_workers": true,
+            "input_size": 224
+        }
+    },
+
+    "metrics": [
+        "accuracy", "top_k_acc"
+    ]
+}

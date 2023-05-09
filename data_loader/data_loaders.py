@@ -50,10 +50,12 @@ class IMNETDataLoader(DataLoader):
         train_subset_indices = np.random.choice(train_indices, train_subset_size, replace=False)
         val_subset_indices = np.random.choice(val_indices, val_subset_size, replace=False)
         # Subset for distributed training
-        torch.distributed.broadcast(torch.tensor(train_subset_indices, device=rank), 0)
-        torch.distributed.broadcast(torch.tensor(val_subset_indices, device=rank), 0)
+        if is_distributed:
+            torch.distributed.broadcast(torch.tensor(train_subset_indices, device=rank), 0)
+            torch.distributed.broadcast(torch.tensor(val_subset_indices, device=rank), 0)
+            torch.distributed.barrier()
+
         # generate subset
-        torch.distributed.barrier()
         self.train_sub_dataset = Subset(self.train_dataset, train_subset_indices)
         self.val_sub_dataset = Subset(self.train_dataset, val_subset_indices)
 

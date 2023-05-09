@@ -33,13 +33,11 @@ def main(config, trials=None):
         config['optimizer']['args']['weight_decay'] = trials.suggest_float('weight_decay', 0.05, 0.3)
         config['optimizer']['betas'] = [trials.suggest_float('beta1', 0.0, 1.0), trials.suggest_float('beta2', 0.0, 1.0)]
 
-        config['mixup']['mixup_alpha'] = trials.suggest_float('m_alpha', 0.5, 1.0)
-        config['mixup']['cutmix_alpha'] = trials.suggest_float('c_alpha', 0.5, 1.0)
+        config['mixup']['mixup_alpha'] = trials.suggest_float('m_alpha', 0.6, 1.0)
+        config['mixup']['cutmix_alpha'] = trials.suggest_float('c_alpha', 0.6, 1.0)
         config['mixup']['label_smoothing'] = trials.suggest_float('label_smoothing', 0.0, 0.3)
 
         config['lr_scheduler']['warmup_epochs'] = trials.suggest_int('warmup_epochs', 2, 7)
-
-        config['data_loader']['args']['repeated_aug'] = trials.suggest_categorical('repeated_aug', [True, False])
 
 
     n_gpus = len(config['gpu_list'])

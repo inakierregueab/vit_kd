@@ -27,7 +27,7 @@ class DistillationLoss(nn.Module):
         base_loss = self.base_criterion(s_output, target)
 
         if self.distillation_type == 'none':
-            return base_loss
+            return base_loss, base_loss, base_loss
 
         elif self.distillation_type == 'soft':
             T = self.tau

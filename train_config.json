@@ -1,9 +1,9 @@
 {
-    "name": "ViTB16_gridsearch",
-    "gpu_list": [0,1,2,3],
+    "name": "PS_none_GS",
+    "gpu_list": [0,1],
 
     "arch": {
-        "type": "ViTB16",
+        "type": "TandemTPS",
         "args": {}
     },
     "data_loader": {
@@ -71,7 +71,7 @@
         "verbosity": 2,
         
         "monitor": "min val_loss",
-        "early_stop": 10,
+        "early_stop": 7,
 
         "tensorboard": true
     }

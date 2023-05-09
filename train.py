@@ -39,11 +39,13 @@ def main(config, trials=None):
 
         config['lr_scheduler']['warmup_epochs'] = trials.suggest_int('warmup_epochs', 2, 7)
 
+        config['loss']['args']['alpha'] = trials.suggest_float('l_alpha', 0.0, 1.0)
+
 
     n_gpus = len(config['gpu_list'])
     is_distributed = n_gpus > 1
 
-    scorer = Scorer(is_distributed)
+    scorer = Scorer(is_distributed, config["name"])
 
     if is_distributed:
         os.environ['MASTER_ADDR'] = 'localhost'
@@ -143,7 +145,9 @@ if __name__ == '__main__':
     study.optimize(lambda trial: main(config, trial), n_trials=50)
 
     # TODO: change destination
-    file = open('./../saved/study.pkl', 'wb')
+    fname = f'study_{config["name"]}.pkl'
+    fpath = os.path.join('./../saved', fname)
+    file = open(fpath, 'wb')
     pickle.dump(study, file)
     file.close()
 

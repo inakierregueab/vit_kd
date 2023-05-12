@@ -133,9 +133,23 @@ class TandemTPS(nn.Module):
         s_out = self.proxy_student(x, t_hidden_state)
         return s_out, t_out
 
-# TODO: add TandemTS, Tandem PSS
 
+class TandemTPSS(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.proxy = TandemTPS()
+        checkpoint = torch.load('./../../data/proxy_student.pth', map_location='cuda' if torch.cuda.is_available() else 'cpu')
+        self.proxy.load_state_dict(checkpoint['state_dict'])
+        self.student = DeiT_S16()
 
+    def forward(self, x):
+
+        with torch.no_grad():
+            p_out, t_out = self.proxy(x)
+
+        s_out = self.student(x)
+        # TODO: output t_out? if not: p_out, _ = self.teacher(x)
+        return s_out, t_out
 
 
 # Testing unit

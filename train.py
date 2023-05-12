@@ -41,6 +41,8 @@ def main(config, trials=None):
 
         config['loss']['args']['alpha'] = trials.suggest_float('l_alpha', 0.0, 1.0)
 
+        config['loss']['args']['tau'] = trials.suggest_float('tau', 0.1, 20.0)
+
 
     n_gpus = len(config['gpu_list'])
     is_distributed = n_gpus > 1
@@ -142,7 +144,7 @@ if __name__ == '__main__':
         sampler=optuna.samplers.TPESampler(seed=123),
         pruner=optuna.pruners.MedianPruner()
     )
-    study.optimize(lambda trial: main(config, trial), n_trials=50)
+    study.optimize(lambda trial: main(config, trial), n_trials=35)
 
     # TODO: change destination
     fname = f'study_{config["name"]}.pkl'

@@ -1,5 +1,5 @@
 {
-    "name": "PS_none_GS",
+    "name": "PS_soft_kl_GS",
     "gpu_list": [0,1],
 
     "arch": {
@@ -47,7 +47,7 @@
     "loss": {
         "type": "DistillationLoss",
         "args": {
-            "distillation_type": "none",
+            "distillation_type": "soft_kl",
             "alpha": 0.5,
             "tau": 2
         }
@@ -71,7 +71,7 @@
         "verbosity": 2,
         
         "monitor": "min val_loss",
-        "early_stop": 7,
+        "early_stop": 5,
 
         "tensorboard": true
     }

@@ -138,9 +138,13 @@ class TandemTPSS(nn.Module):
     def __init__(self):
         super().__init__()
         self.proxy = TandemTPS()
+        self.student = DeiT_S16()
+
         checkpoint = torch.load('./../../data/proxy_student.pth', map_location='cuda' if torch.cuda.is_available() else 'cpu')
         self.proxy.load_state_dict(checkpoint['state_dict'])
-        self.student = DeiT_S16()
+
+        for param in self.proxy.parameters():
+            param.requires_grad = False
 
     def forward(self, x):
 
@@ -148,7 +152,7 @@ class TandemTPSS(nn.Module):
             p_out, t_out = self.proxy(x)
 
         s_out = self.student(x)
-        # TODO: output t_out? if not: p_out, _ = self.teacher(x)
+        # TODO: output t_out? if True: new ensemble loss, else: p_out, _ = self.teacher(x)
         return s_out, t_out
 
 
@@ -180,7 +184,6 @@ if __name__ == "__main__":
     assert out[1].shape == (bs, seq_length, t_hidden_dim)
     # 4. No params requiring grad
     assert len([True for p in teacher.parameters() if p.requires_grad]) == 0
-    # TODO: check performance of teacher, are weights uploaded correctly?
 
     tandem = TandemTPS()
     s_out, t_out = tandem(x)

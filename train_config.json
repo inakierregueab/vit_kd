@@ -1,5 +1,5 @@
 {
-    "name": "PS_soft_kl_GS",
+    "name": "PS_soft_ce_GS",
     "gpu_list": [0,1],
 
     "arch": {
@@ -47,7 +47,7 @@
     "loss": {
         "type": "DistillationLoss",
         "args": {
-            "distillation_type": "soft_kl",
+            "distillation_type": "soft_ce",
             "alpha": 0.5,
             "tau": 2
         }

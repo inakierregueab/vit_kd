@@ -47,7 +47,7 @@ class DistillationLoss(nn.Module):
             distill_loss = F.cross_entropy(s_output, t_output.argmax(dim=1))
 
         elif self.distillation_type == 'soft_ce':
-            distill_loss = SoftTargetCrossEntropy()(s_output, t_output, temperature=self.tau)
+            distill_loss = SoftTargetCrossEntropy()(s_output, t_output, temperature=self.tau, t_is_prob=False)
 
         loss = base_loss * (1-self.alpha) + distill_loss * self.alpha
         return loss, base_loss, distill_loss

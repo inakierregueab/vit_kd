@@ -172,8 +172,8 @@ if __name__ == "__main__":
     s_out, t_out = tandem(x)
 
     # 5. Tandem outputs both student and teacher correctly
-    assert s_out.shape == (bs, num_classes)
-    assert t_out.shape == (bs, num_classes)
+    assert s_out[0].shape == (bs, num_classes)
+    assert t_out[0].shape == (bs, num_classes)
 
     # 6. Tandem trainable params are the same as proxy student
     tandem_parameters = filter(lambda p: p.requires_grad, tandem.parameters())

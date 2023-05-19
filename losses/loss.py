@@ -18,13 +18,15 @@ class DistillationLoss(nn.Module):
         self.tau = tau
 
     def forward(self, outputs, target):
+        """
+        :param outputs: tuple of (student_output, teacher_output) where each output is a tuple of (logits, hidden_states, attention_weights)
+        :param target: logits from target
+        :return: loss, base_loss, distill_loss
+        """
 
-        if not isinstance(outputs, torch.Tensor):
-            s_output, t_output = outputs
-        else:
-            s_output = outputs
+        s_output, t_output = outputs
 
-        base_loss = self.base_criterion(s_output, target)
+        base_loss = self.base_criterion(s_output[0], target)
 
         if self.distillation_type == 'none':
             return base_loss, base_loss, base_loss
@@ -33,15 +35,15 @@ class DistillationLoss(nn.Module):
             T = self.tau
             distill_loss = F.kl_div(
                 # Use LogSoftmax for numerical stability
-                F.log_softmax(s_output/T, dim=1),
-                F.log_softmax(t_output/T, dim=1),
+                F.log_softmax(s_output[0]/T, dim=1),
+                F.log_softmax(t_output[0]/T, dim=1),
                 reduction='batchmean',
                 log_target=True
             ) * (T*T)
 
         elif self.distillation_type == 'soft_mse':
             # More info: https://arxiv.org/pdf/2105.08919.pdf
-            distill_loss = F.mse_loss(s_output, t_output)
+            distill_loss = F.mse_loss(s_output[0], t_output[0])
 
         elif self.distillation_type == 'hard':
             distill_loss = F.cross_entropy(s_output, t_output.argmax(dim=1))

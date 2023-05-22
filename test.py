@@ -1,43 +1,36 @@
 import argparse
 import torch
 from tqdm import tqdm
-import data_loader.data_loaders as module_data
-import model.loss as module_loss
-import model.metric as module_metric
-import model.model as module_arch
+import data_loader.test_loader as module_data
+import models.metric as module_metric
+import models.model_hub as module_arch
 from parse_config import ConfigParser
+from utils.util import prepare_device
 
 
 def main(config):
     logger = config.get_logger('test')
 
     # setup data_loader instances
-    data_loader = getattr(module_data, config['data_loader']['type'])(
-        config['data_loader']['args']['data_dir'],
-        batch_size=512,
-        shuffle=False,
-        validation_split=0.0,
-        training=False,
-        num_workers=2
-    )
+    data_loader = config.init_obj('data_loader', module_data)
 
     # build model architecture
     model = config.init_obj('arch', module_arch)
     logger.info(model)
 
-    # get function handles of loss and metrics
-    loss_fn = getattr(module_loss, config['loss'])
-    metric_fns = [getattr(module_metric, met) for met in config['metrics']]
-
-    logger.info('Loading checkpoint: {} ...'.format(config.resume))
-    checkpoint = torch.load(config.resume)
-    state_dict = checkpoint['state_dict']
-    if config['n_gpu'] > 1:
-        model = torch.nn.DataParallel(model)
+    # load weights from checkpoint
+    checkpoint_path = str(config.resume)
+    logger.info('Loading checkpoint: {} ...'.format(checkpoint_path))
+    state_dict = torch.load(checkpoint_path, map_location='cpu')['state_dict']
     model.load_state_dict(state_dict)
 
+
+    # get function handles of loss and metrics
+    loss_fn = torch.nn.CrossEntropyLoss()
+    metric_fns = [getattr(module_metric, met) for met in config['metrics']]
+
     # prepare model for testing
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = prepare_device(config['gpu_list'])
     model = model.to(device)
     model.eval()
 
@@ -47,10 +40,10 @@ def main(config):
     with torch.no_grad():
         for i, (data, target) in enumerate(tqdm(data_loader)):
             data, target = data.to(device), target.to(device)
-            output = model(data)
+            output = model(data)[0][0]
 
             #
-            # save sample images, or do something with output here
+            # TODO: save sample images, or do something with output here
             #
 
             # computing loss, metrics on test set
@@ -58,7 +51,7 @@ def main(config):
             batch_size = data.shape[0]
             total_loss += loss.item() * batch_size
             for i, metric in enumerate(metric_fns):
-                total_metrics[i] += metric(output, target) * batch_size
+                total_metrics[i] += metric(output, target, is_logits=False) * batch_size
 
     n_samples = len(data_loader.sampler)
     log = {'loss': total_loss / n_samples}
@@ -70,9 +63,10 @@ def main(config):
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='PyTorch Template')
-    args.add_argument('-c', '--config', default=None, type=str,
+    args.add_argument('-c', '--config', default='test_config.json', type=str,
                       help='config file path (default: None)')
-    args.add_argument('-r', '--resume', default=None, type=str,
+    # TODO: change from docker-compose
+    args.add_argument('-r', '--resume', default="./../saved/models/SCE/0520_072107/checkpoint-epoch40.pth", type=str,
                       help='path to latest checkpoint (default: None)')
     args.add_argument('-d', '--device', default=None, type=str,
                       help='indices of GPUs to enable (default: all)')

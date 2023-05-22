@@ -66,19 +66,6 @@ class DeiT_Ti16(VisionTransformer):
         )
 
 
-class Student_Ti16(VisionTransformer):
-    def __init__(self, **kwargs):
-        super().__init__(
-            image_size=224,
-            patch_size=16,
-            num_layers=12,
-            num_heads=3,
-            hidden_dim=192,
-            mlp_dim=768,
-            **kwargs
-        )
-
-
 class TandemTPS(nn.Module):
     def __init__(self):
         super().__init__()
@@ -89,9 +76,8 @@ class TandemTPS(nn.Module):
         with torch.no_grad():
             t_output = self.teacher(x)
 
-        s_output = self.proxy_student(x, t_output[1])
+        s_output = self.proxy_student(x, t_output[1], output_hidden=True)   #TODO: output_hidden=True only in inference
         return s_output, t_output
-
 
 
 class TandemTPS_noTT(nn.Module):
@@ -115,26 +101,25 @@ class TandemTPS_noTT(nn.Module):
         s_output = self.proxy_student(x, t_hidden_state, output_hidden=False, output_att=True, average_att=True)
         return s_output, t_output
 
+
 class TandemPSS(nn.Module):
     def __init__(self):
         super().__init__()
         self.proxy = TandemTPS()
-        checkpoint = torch.load('./../../saved/KL/og/checkpoint-epoch60.pth')
-        self.proxy.load_state_dict(checkpoint['model_state_dict'])
+        checkpoint = torch.load('./../../saved/weights/proxy_kl/checkpoint-epoch60.pth',
+                                map_location=torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu'))
+        self.proxy.load_state_dict(checkpoint['state_dict'])
         for param in self.proxy.parameters():
             param.requires_grad = False
 
-        self.student = Student_Ti16()
+        self.student = DeiT_S16()
 
     def forward(self, x):
-        # TODO: i want hidden state from proxy, standard criteria to get hidden state
         with torch.no_grad():
-            p_out, _ = self.proxy(x)    #TODO: want teacher?
+            p_output, t_output = self.proxy(x)
 
-        s_out = self.student(x)
-        return s_out, p_out
-
-
+        s_output = self.student(x, output_hidden=True)
+        return s_output, t_output, p_output
 
 
 # Testing unit
@@ -168,7 +153,7 @@ if __name__ == "__main__":
     # 4. No params requiring grad
     assert len([True for p in teacher.parameters() if p.requires_grad]) == 0
 
-    tandem = TandemTPS_noTT()
+    tandem = TandemTPS()
     s_out, t_out = tandem(x)
 
     # 5. Tandem outputs both student and teacher correctly
@@ -183,6 +168,17 @@ if __name__ == "__main__":
     proxy_params = sum([np.prod(p.size()) for p in proxy_parameters])
 
     assert tandem_params == proxy_params
+
+    # Triplet tandem
+    triplet = TandemPSS()
+    s_out, t_out, p_out = triplet(x)
+
+    # 7. Logits have same shape
+    assert s_out[0].shape == t_out[0].shape == p_out[0].shape == (bs, num_classes)
+
+    # Hidden states have same shape
+    assert s_out[1].shape == p_out[1].shape == (bs, seq_length, s_hidden_dim)
+
 
 
 

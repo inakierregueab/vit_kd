@@ -30,19 +30,17 @@ def main(config, trials=None):
     # Hyperparameter optimization
     if trials is not None:
         config['optimizer']['args']['lr'] = trials.suggest_float('lr', 0.0001, 0.005)
-        config['optimizer']['args']['weight_decay'] = trials.suggest_float('weight_decay', 0.05, 0.3)
-        config['optimizer']['betas'] = [trials.suggest_float('beta1', 0.0, 1.0), trials.suggest_float('beta2', 0.0, 1.0)]
+        config['lr_scheduler']['min_lr'] = trials.suggest_float('min_lr', 0.00001, 0.0001)
+        config['optimizer']['args']['weight_decay'] = trials.suggest_float('weight_decay', 0.05, 0.15)
 
-        config['mixup']['mixup_alpha'] = trials.suggest_float('m_alpha', 0.6, 1.0)
-        config['mixup']['cutmix_alpha'] = trials.suggest_float('c_alpha', 0.6, 1.0)
         config['mixup']['label_smoothing'] = trials.suggest_float('label_smoothing', 0.0, 0.3)
 
-        config['lr_scheduler']['warmup_epochs'] = trials.suggest_int('warmup_epochs', 2, 7)
+        config['loss']['args']['distillation_type'] = trials.suggest_categorical('l_type', ['none', 'soft_kl', 'soft_mse', 'soft_ce', 'hard'])
+        config['loss']['args']['distillation_alpha'] = trials.suggest_float('l_alpha', 0.0, 0.5)
+        config['loss']['args']['distillation_tau'] = trials.suggest_float('tau', 0.1, 10.0)
 
-        config['loss']['args']['alpha'] = trials.suggest_float('l_alpha', 0.0, 1.0)
-
-        config['loss']['args']['tau'] = trials.suggest_float('tau', 0.1, 20.0)
-
+        config['loss']['args']['hidden_state_criterion'] = trials.suggest_categorical('l_crit', ['none','mse', 'cosine'])
+        config['loss']['args']['hidden_state_beta'] = trials.suggest_float('l_beta', 0.0, 0.5)
 
     n_gpus = len(config['gpu_list'])
     is_distributed = n_gpus > 1

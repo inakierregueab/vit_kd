@@ -102,7 +102,7 @@ class DistillationLoss(nn.Module):
         elif self.hidden_state_criterion == 'cosine':
             # TODO: along which dimensions should we compute cosine similarity?
             # TODO: Reduction of loss is not clear
-            hidden_state_loss = 1 - F.cosine_similarity(outputs[0][1], outputs[2][1])
+            hidden_state_loss = 1 - F.cosine_similarity(outputs[0][1], outputs[2][1], dim=1).mean()
 
         return hidden_state_loss
 

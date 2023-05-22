@@ -61,7 +61,7 @@ class Trainer(BaseTrainer):
 
             self.optimizer.zero_grad()
             outputs = self.model(data)
-            loss, base_loss, dist_loss = self.criterion(outputs, target)
+            loss, base_loss, dist_loss, hidden_loss = self.criterion(outputs, target)
             loss.backward()
             self.optimizer.step()
 
@@ -69,6 +69,7 @@ class Trainer(BaseTrainer):
                 dist.reduce(loss, dst=0, op=dist.ReduceOp.AVG)      # AVG loss across all GPUs
                 dist.reduce(base_loss, dst=0, op=dist.ReduceOp.AVG)
                 dist.reduce(dist_loss, dst=0, op=dist.ReduceOp.AVG)
+                dist.reduce(hidden_loss, dst=0, op=dist.ReduceOp.AVG)
 
             metrics = {}
             for met in self.metric_ftns:
@@ -83,6 +84,7 @@ class Trainer(BaseTrainer):
                 self.train_metrics.update('loss', loss.item())
                 self.writer.add_scalar('loss/base_loss', base_loss.item())
                 self.writer.add_scalar('loss/dist_loss', dist_loss.item())
+                self.writer.add_scalar('loss/hidden_loss', hidden_loss.item())
 
                 for key, value in metrics.items():
                     self.train_metrics.update(key, value)

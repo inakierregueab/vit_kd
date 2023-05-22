@@ -70,7 +70,7 @@ def main_worker_function(rank, world_size, is_distributed, config):
     # TODO: torch.compile() failing
 
     # get function handles of loss and metrics
-    criterion = config.init_obj('loss', module_loss, rank=rank)
+    criterion = config.init_obj('loss', module_loss, rank=rank).to(device)
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler

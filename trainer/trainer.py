@@ -112,8 +112,8 @@ class Trainer(BaseTrainer):
             self.writer.add_scalar('time/epoch', elapsed_time, epoch=epoch)
             self.writer.add_scalar('loss/loss_per_epoch', log['loss'], epoch=epoch)
 
-            att_matrix = outputs[0][2].mean(0).squeeze(0)
-            self.writer.add_image('att_matrix', att_matrix * 255, dataformats='HW')
+            #att_matrix = outputs[0][2].mean(0).squeeze(0)
+            #self.writer.add_image('att_matrix', att_matrix * 255, dataformats='HW')
 
         if self.do_validation & (epoch % self.val_freq == 0):
             val_log = self._valid_epoch(epoch)

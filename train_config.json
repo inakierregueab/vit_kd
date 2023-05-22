@@ -1,5 +1,5 @@
 {
-    "name": "KL-TT",
+    "name": "SCE",
     "gpu_list": [0,1,2,3],
 
     "arch": {
@@ -10,7 +10,7 @@
         "type": "IMNETDataLoader",
         "args":{
             "data_dir": "./../data/",
-            "batch_size": 224,
+            "batch_size": 256,
             "num_workers": 8,
             "pin_memory": true,
             "persistent_workers": true,
@@ -47,8 +47,8 @@
     "loss": {
         "type": "DistillationLoss",
         "args": {
-            "distillation_type": "soft_kl",
-            "alpha": 0.9,
+            "distillation_type": "soft_ce",
+            "alpha": 0.5,
             "tau": 1.5
         }
     },

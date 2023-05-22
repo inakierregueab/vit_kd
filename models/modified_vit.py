@@ -4,6 +4,7 @@ from torchvision.models import VisionTransformer
 from utils.util import load_pretrained_weights
 
 
+# TODO: need it? can weights be loaded in our architecture?
 class ModVisionTransformer(VisionTransformer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -23,7 +24,7 @@ class ModVisionTransformer(VisionTransformer):
         cls_token = x[:, 0]
         cls_token = self.heads(cls_token)
 
-        return cls_token, x
+        return cls_token, x, None
 
 # Testing unit
 if __name__ == "__main__":
@@ -55,8 +56,10 @@ if __name__ == "__main__":
     out = teacher(x)
 
     # 1. Teacher outputs (cls_token, x)
-    assert len(out) == 2
+    assert len(out) == 3
     # 2. cls_token is a tensor of shape (bs, num_classes)
     assert out[0].shape == (bs, num_classes)
     # 3. x is a tensor of shape (bs, seq_length, hidden_dim)
     assert out[1].shape == (bs, seq_length, t_hidden_dim)
+    # 4. No attention matrix returned
+    assert out[2] is None

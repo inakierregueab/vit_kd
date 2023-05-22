@@ -60,24 +60,20 @@ class Trainer(BaseTrainer):
             data, target = self.mixup_fn(data, target)
 
             self.optimizer.zero_grad()
-            output = self.model(data)
-            loss, base_loss, dist_loss = self.criterion(output, target)
+            outputs = self.model(data)
+            loss, base_loss, dist_loss, hidden_loss = self.criterion(outputs, target)
             loss.backward()
             self.optimizer.step()
-
-            if not isinstance(output, torch.Tensor):
-                output, _ = output
-            else:
-                output = output
 
             if self.is_distributed:
                 dist.reduce(loss, dst=0, op=dist.ReduceOp.AVG)      # AVG loss across all GPUs
                 dist.reduce(base_loss, dst=0, op=dist.ReduceOp.AVG)
                 dist.reduce(dist_loss, dst=0, op=dist.ReduceOp.AVG)
+                dist.reduce(hidden_loss, dst=0, op=dist.ReduceOp.AVG)
 
             metrics = {}
             for met in self.metric_ftns:
-                metric = met(output, target)
+                metric = met(outputs[0][0], target)     # outputs[0][0] is the student logits
                 if self.is_distributed:
                     dist.reduce(torch.tensor([metric], device=self.rank), dst=0, op=dist.ReduceOp.AVG)   # AVG metric across all GPUs
                 metrics[met.__name__] = metric
@@ -88,6 +84,7 @@ class Trainer(BaseTrainer):
                 self.train_metrics.update('loss', loss.item())
                 self.writer.add_scalar('loss/base_loss', base_loss.item())
                 self.writer.add_scalar('loss/dist_loss', dist_loss.item())
+                self.writer.add_scalar('loss/hidden_loss', hidden_loss.item())
 
                 for key, value in metrics.items():
                     self.train_metrics.update(key, value)
@@ -116,6 +113,9 @@ class Trainer(BaseTrainer):
             log = self.train_metrics.result()
             self.writer.add_scalar('time/epoch', elapsed_time, epoch=epoch)
             self.writer.add_scalar('loss/loss_per_epoch', log['loss'], epoch=epoch)
+
+            #att_matrix = outputs[0][2].mean(0).squeeze(0)
+            #self.writer.add_image('att_matrix', att_matrix * 255, dataformats='HW')
 
         if self.do_validation & (epoch % self.val_freq == 0):
             val_log = self._valid_epoch(epoch)
@@ -151,11 +151,7 @@ class Trainer(BaseTrainer):
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
-                output = self.model(data)
-                if not isinstance(output, torch.Tensor):
-                    output, _ = output
-                else:
-                    output = output
+                output = self.model(data)[0][0]     # outputs[0][0] is the student logits
                 loss = criterion(output, target)
 
                 if self.is_distributed:

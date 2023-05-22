@@ -40,12 +40,7 @@ def main(config):
     with torch.no_grad():
         for i, (data, target) in enumerate(tqdm(data_loader)):
             data, target = data.to(device), target.to(device)
-            output = model(data)
-
-            if not isinstance(output, torch.Tensor):
-                output, _ = output
-            else:
-                output = output
+            output = model(data)[0][0]
 
             #
             # TODO: save sample images, or do something with output here
@@ -71,7 +66,7 @@ if __name__ == '__main__':
     args.add_argument('-c', '--config', default='test_config.json', type=str,
                       help='config file path (default: None)')
     # TODO: change from docker-compose
-    args.add_argument('-r', '--resume', default="./../saved/models/DeiT_params_TPS_soft/0508_073119/model_best.pth", type=str,
+    args.add_argument('-r', '--resume', default="./../saved/models/SCE/0520_072107/checkpoint-epoch40.pth", type=str,
                       help='path to latest checkpoint (default: None)')
     args.add_argument('-d', '--device', default=None, type=str,
                       help='indices of GPUs to enable (default: all)')

@@ -7,6 +7,7 @@ from losses.softCE import SoftTargetCrossEntropy
 
 class DistillationLoss(nn.Module):
     def __init__(self,
+                 base_gamma=1,
                  distillation_type='none',
                  distillation_from='teacher',
                  distillation_alpha=0,
@@ -16,6 +17,7 @@ class DistillationLoss(nn.Module):
                  rank=0):
         super().__init__()
 
+        self.base_gamma = base_gamma
         self.base_criterion = SoftTargetCrossEntropy()
 
         assert distillation_type in ['none', 'soft_kl', 'soft_mse', 'soft_ce', 'hard']
@@ -61,7 +63,7 @@ class DistillationLoss(nn.Module):
             hidden_state_loss = self.compute_hidden_state_loss(outputs)
 
         # Compute total loss
-        total_loss = base_loss * (1-self.distillation_alpha-self.hidden_state_beta) + \
+        total_loss = base_loss * self.base_gamma + \
                      distill_loss * self.distillation_alpha + \
                      hidden_state_loss * self.hidden_state_beta
 

@@ -35,12 +35,14 @@ def main(config, trials=None):
 
         config['mixup']['label_smoothing'] = trials.suggest_float('label_smoothing', 0.0, 0.3)
 
-        config['loss']['args']['distillation_type'] = trials.suggest_categorical('l_type', ['none', 'soft_kl', 'soft_mse', 'soft_ce', 'hard'])
-        config['loss']['args']['distillation_alpha'] = trials.suggest_float('l_alpha', 0.0, 0.5)
+        config['loss']['args']['distillation_type'] = trials.suggest_categorical('l_type', ['soft_kl', 'soft_ce'])
+        config['loss']['args']['distillation_alpha'] = trials.suggest_float('l_alpha', 0.0, 1.0)
         config['loss']['args']['distillation_tau'] = trials.suggest_float('tau', 0.1, 10.0)
 
-        config['loss']['args']['hidden_state_criterion'] = trials.suggest_categorical('l_crit', ['none','mse', 'cosine'])
-        config['loss']['args']['hidden_state_beta'] = trials.suggest_float('l_beta', 0.0, 0.5)
+        config['loss']['args']['hidden_state_criterion'] = trials.suggest_categorical('l_crit', ['mse', 'cosine'])
+        config['loss']['args']['hidden_state_beta'] = trials.suggest_float('l_beta', 0.0, 1.0)
+
+        config['loss']['args']['base_gamma'] = trials.suggest_float('l_gamma', 0.0, 1.0)
 
     n_gpus = len(config['gpu_list'])
     is_distributed = n_gpus > 1
@@ -142,7 +144,7 @@ if __name__ == '__main__':
         sampler=optuna.samplers.TPESampler(seed=123),
         pruner=optuna.pruners.MedianPruner()
     )
-    study.optimize(lambda trial: main(config, trial), n_trials=35)
+    study.optimize(lambda trial: main(config, trial), n_trials=40)
 
     # TODO: change destination
     fname = f'study_{config["name"]}.pkl'

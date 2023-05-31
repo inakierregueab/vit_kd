@@ -1,9 +1,9 @@
 {
-    "name": "TEST_sce",
+    "name": "TEST_full",
     "gpu_list": [0],
 
     "arch": {
-        "type": "TandemTPS",
+        "type": "TandemPSS",
         "args": {}
     },
 

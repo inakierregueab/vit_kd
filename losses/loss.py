@@ -110,6 +110,7 @@ class DistillationLoss(nn.Module):
 
 class OnlineKDLoss(nn.Module):
     def __init__(self,
+                 base_gamma=1,
                  distillation_type='none',
                  distillation_from='teacher',
                  distillation_alpha=0,
@@ -119,6 +120,7 @@ class OnlineKDLoss(nn.Module):
                  rank=0):
         super().__init__()
 
+        self.base_gamma = base_gamma
         self.base_criterion = SoftTargetCrossEntropy()
 
         assert distillation_type in ['none', 'soft_kl', 'soft_mse', 'soft_ce', 'hard']
@@ -166,12 +168,12 @@ class OnlineKDLoss(nn.Module):
         hidden_state_loss = self.compute_hidden_state_loss(student_hidden_states, proxy_hidden_states)
 
         # Student loss
-        s_total_loss = s_base_loss * (1-self.distillation_alpha-self.hidden_state_beta) + \
+        s_total_loss = s_base_loss * self.base_gamma + \
                           s_distill_loss * self.distillation_alpha + \
                             hidden_state_loss * self.hidden_state_beta
 
         # Proxy loss
-        p_total_loss = p_base_loss * (1-self.distillation_alpha-self.hidden_state_beta) + \
+        p_total_loss = p_base_loss * self.base_gamma + \
                             p_distill_loss * self.distillation_alpha + \
                             hidden_state_loss * self.hidden_state_beta
 

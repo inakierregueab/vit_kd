@@ -1,16 +1,16 @@
 {
-    "name": "Student_GS",
+    "name": "Online_GS",
     "gpu_list": [0,1,2],
 
     "arch": {
-        "type": "TandemPSS",
+        "type": "OnlinePSS",
         "args": {}
     },
     "data_loader": {
         "type": "IMNETDataLoader",
         "args":{
             "data_dir": "./../data/",
-            "batch_size": 352,
+            "batch_size": 160,
             "num_workers": 8,
             "pin_memory": true,
             "persistent_workers": true,
@@ -33,7 +33,7 @@
         "prob": 1.0,
         "switch_prob": 0.5,
         "mode": "batch",
-        "label_smoothing": 0.05,
+        "label_smoothing": 0.1,
         "num_classes": 1000
     },
     "optimizer": {
@@ -41,11 +41,11 @@
         "args":{
             "lr": 1e-3,
             "betas": [0.9,0.999],
-            "weight_decay": 0.15
+            "weight_decay": 0.1
         }
     },
     "loss": {
-        "type": "DistillationLoss",
+        "type": "OnlineKDLoss",
         "args": {
             "base_gamma": 0.3,
             "distillation_type": "soft_kl",

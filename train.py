@@ -30,14 +30,14 @@ def main(config, trials=None):
     # Hyperparameter optimization
     if trials is not None:
         config['optimizer']['args']['lr'] = trials.suggest_float('lr', 0.0001, 0.005)
-        config['lr_scheduler']['min_lr'] = trials.suggest_float('min_lr', 0.00001, 0.0001)
-        config['optimizer']['args']['weight_decay'] = trials.suggest_float('weight_decay', 0.05, 0.15)
+        #config['lr_scheduler']['min_lr'] = trials.suggest_float('min_lr', 0.00001, 0.0001)
+        #config['optimizer']['args']['weight_decay'] = trials.suggest_float('weight_decay', 0.05, 0.15)
 
-        config['mixup']['label_smoothing'] = trials.suggest_float('label_smoothing', 0.0, 0.3)
+        #config['mixup']['label_smoothing'] = trials.suggest_float('label_smoothing', 0.0, 0.3)
 
         config['loss']['args']['distillation_type'] = trials.suggest_categorical('l_type', ['soft_kl', 'soft_ce'])
         config['loss']['args']['distillation_alpha'] = trials.suggest_float('l_alpha', 0.0, 1.0)
-        config['loss']['args']['distillation_tau'] = trials.suggest_float('tau', 0.1, 10.0)
+        config['loss']['args']['distillation_tau'] = trials.suggest_float('tau', 0.1, 5.0)
 
         config['loss']['args']['hidden_state_criterion'] = trials.suggest_categorical('l_crit', ['mse', 'cosine'])
         config['loss']['args']['hidden_state_beta'] = trials.suggest_float('l_beta', 0.0, 1.0)

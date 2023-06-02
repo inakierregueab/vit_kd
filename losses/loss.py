@@ -45,20 +45,25 @@ class DistillationLoss(nn.Module):
         :return: loss, base_loss, distill_loss
         """
 
+        # Unpack outputs
+        student_logits, student_hidden_states, student_attention_weights = outputs[0]
+        teacher_logits, teacher_hidden_states, teacher_attention_weights = outputs[1]
+        proxy_logits, proxy_hidden_states, proxy_attention_weights = outputs[2]
+
         # Compute base criterion
-        base_loss = self.base_criterion(outputs[0][0], target)
+        base_loss = self.base_criterion(student_logits, target)
 
         # Compute distillation loss
         if self.distillation_type == 'none':
              distill_loss = base_loss
         else:
-             distill_loss = self.compute_distillation_loss(outputs)
+             distill_loss = self.compute_distillation_loss(student_logits, teacher_logits)
 
         # Compute hidden state loss
         if self.hidden_state_criterion == 'none':
             hidden_state_loss = base_loss
         else:
-            hidden_state_loss = self.compute_hidden_state_loss(outputs)
+            hidden_state_loss = self.compute_hidden_state_loss(student_hidden_states, proxy_hidden_states)
 
         # Compute total loss
         total_loss = base_loss * (1-self.distillation_alpha-self.hidden_state_beta) + \
@@ -67,42 +72,38 @@ class DistillationLoss(nn.Module):
 
         return total_loss, base_loss, distill_loss, hidden_state_loss
 
-    def compute_distillation_loss(self, outputs):
-        # TODO: implement 'both'?
-        index = 1 if self.distillation_from == 'teacher' else 2
+    def compute_distillation_loss(self, student_logits, teacher_logits):
 
         if self.distillation_type == 'soft_kl':
             T = self.distillation_tau
             distill_loss = F.kl_div(
                 # Use LogSoftmax for numerical stability
-                F.log_softmax(outputs[0][0] / T, dim=1),
-                F.log_softmax(outputs[index][0] / T, dim=1),
+                F.log_softmax(student_logits / T, dim=1),
+                F.log_softmax(teacher_logits / T, dim=1),
                 reduction='batchmean',
                 log_target=True
             ) * (T * T)
 
         elif self.distillation_type == 'soft_mse':
             # More info: https://arxiv.org/pdf/2105.08919.pdf
-            distill_loss = F.mse_loss(outputs[0][0], outputs[index][0])
+            distill_loss = F.mse_loss(student_logits, teacher_logits)
 
         elif self.distillation_type == 'hard':
-            distill_loss = F.cross_entropy(outputs[0][0], outputs[index][0].argmax(dim=1))
+            distill_loss = F.cross_entropy(student_logits, teacher_logits.argmax(dim=1))
 
         elif self.distillation_type == 'soft_ce':
-            distill_loss = SoftTargetCrossEntropy()(outputs[0][0], outputs[index][0],
+            distill_loss = SoftTargetCrossEntropy()(student_logits, teacher_logits,
                                                     temperature=self.distillation_tau, t_is_prob=False)
 
         return distill_loss
 
-    def compute_hidden_state_loss(self, outputs):
+    def compute_hidden_state_loss(self, student_hidden_states, teacher_hidden_states):
 
         if self.hidden_state_criterion == 'mse':
-            hidden_state_loss = F.mse_loss(outputs[0][1], outputs[2][1])
+            hidden_state_loss = F.mse_loss(student_hidden_states, teacher_hidden_states)
 
         elif self.hidden_state_criterion == 'cosine':
-            # TODO: along which dimensions should we compute cosine similarity?
-            # TODO: Reduction of loss is not clear
-            hidden_state_loss = 1 - F.cosine_similarity(outputs[0][1], outputs[2][1], dim=1).mean()
+            hidden_state_loss = 1 - F.cosine_similarity(student_hidden_states, teacher_hidden_states, dim=1).mean()
 
         return hidden_state_loss
 

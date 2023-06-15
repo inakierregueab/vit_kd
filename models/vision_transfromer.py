@@ -160,6 +160,70 @@ class modEncoder(nn.Module):
         return x, A
 
 
+class CSPEncoder(nn.Module):
+    """Transformer Model Encoder for sequence to sequence translation."""
+
+    def __init__(
+            self,
+            seq_length: int,
+            num_layers: int,
+            num_heads: int,
+            hidden_dim: int,
+            mlp_dim: int,
+            dropout: float,
+            attention_dropout: float,
+            norm_layer: Callable[..., torch.nn.Module] = partial(nn.LayerNorm, eps=1e-6)
+    ):
+        super().__init__()
+        # Note that batch_size is on the first dim because
+        # we have batch_first=True in nn.MultiAttention() by default
+        self.num_layers = num_layers
+        self.pos_embedding = nn.Parameter(torch.empty(1, seq_length, hidden_dim).normal_(std=0.02))  # from BERT
+        self.dropout = nn.Dropout(dropout)
+        cross_block = ProxyEncoderBlock
+        self_block = EncoderBlock
+
+        self.layers = nn.ModuleList()
+        for i in range(num_layers//2):
+            self.layers.append(cross_block(
+                num_heads,
+                hidden_dim,
+                mlp_dim,
+                dropout,
+                attention_dropout,
+                norm_layer,
+            ))
+            # TODO: maybe reduce number of heads for self attention (compression)
+            self.layers.append(self_block(
+                num_heads,
+                hidden_dim,
+                mlp_dim,
+                dropout,
+                attention_dropout,
+                norm_layer,
+            ))
+        self.ln = norm_layer(hidden_dim)
+
+    def forward(self, input: torch.Tensor,
+                memory: Optional[torch.Tensor] = None,
+                output_att: bool = False,
+                average_att: bool = False,
+                ):
+
+        torch._assert(input.dim() == 3, f"Expected (batch_size, seq_length, hidden_dim) got {input.shape}")
+        input = input + self.pos_embedding
+        x = self.dropout(input)
+
+        for layer in self.layers:
+            if isinstance(layer, ProxyEncoderBlock):
+                x, A = layer(x, memory=memory, output_att=output_att, average_att=average_att)
+            elif isinstance(layer, EncoderBlock):
+                x, A = layer(x, output_att=output_att, average_att=average_att)
+
+        x = self.ln(x)
+        return x, A
+
+
 class VisionTransformer(nn.Module):
     """Vision Transformer as per https://arxiv.org/abs/2010.11929."""
 
@@ -177,6 +241,7 @@ class VisionTransformer(nn.Module):
             representation_size: Optional[int] = None,
             norm_layer: Callable[..., torch.nn.Module] = partial(nn.LayerNorm, eps=1e-6),
             proxy: bool = False,
+            self_proxy: bool = False,
     ):
         super().__init__()
         torch._assert(image_size % patch_size == 0, "Input shape indivisible by patch size!")
@@ -200,17 +265,29 @@ class VisionTransformer(nn.Module):
         self.class_token = nn.Parameter(torch.zeros(1, 1, hidden_dim))
         seq_length += 1
 
-        self.encoder = modEncoder(
-            seq_length,
-            num_layers,
-            num_heads,
-            hidden_dim,
-            mlp_dim,
-            dropout,
-            attention_dropout,
-            norm_layer,
-            proxy
-        )
+        if self_proxy is False:
+            self.encoder = modEncoder(
+                seq_length,
+                num_layers,
+                num_heads,
+                hidden_dim,
+                mlp_dim,
+                dropout,
+                attention_dropout,
+                norm_layer,
+                proxy
+            )
+        else:
+            self.encoder = CSPEncoder(
+                seq_length,
+                num_layers,
+                num_heads,
+                hidden_dim,
+                mlp_dim,
+                dropout,
+                attention_dropout,
+                norm_layer
+            )
         self.seq_length = seq_length
 
         heads_layers: OrderedDict[str, nn.Module] = OrderedDict()
@@ -356,9 +433,9 @@ if __name__ == "__main__":
     assert out[2].shape == (bs, num_heads, seq_length, seq_length)
 
     # Average attention matrices
-    out = teacher(x, output_hidden=True, output_att=True, average_att=True)
+    t_out = teacher(x, output_hidden=True, output_att=True, average_att=True)
     # 6. A is a tensor of shape (bs, seq_length, seq_length)
-    assert out[2].shape == (bs, seq_length, seq_length)
+    assert t_out[2].shape == (bs, seq_length, seq_length)
 
     proxy_student = VisionTransformer(
         image_size=image_size,
@@ -369,13 +446,32 @@ if __name__ == "__main__":
         mlp_dim=1536,
         proxy=True
     )
-    out = proxy_student(x, out[1], output_hidden=True, output_att=True, average_att=True)
+    out = proxy_student(x, t_out[1], output_hidden=True, output_att=True, average_att=True)
 
     # 7. Proxy student outputs class token of shape (bs, num_classes)
     assert out[0].shape == (bs, num_classes)
     # 8. Proxy student outputs hidden state of shape (bs, seq_length, hidden_dim)
     assert out[1].shape == (bs, seq_length, s_hidden_dim)
     # 9. Proxy student outputs averaged attention matrices of shape (bs, seq_length, seq_length)
+    assert out[2].shape == (bs, seq_length, seq_length)
+
+    self_proxy_student = VisionTransformer(
+        image_size=image_size,
+        patch_size=patch_size,
+        num_layers=12,
+        num_heads=6,
+        hidden_dim=s_hidden_dim,
+        mlp_dim=1536,
+        proxy=True,
+        self_proxy=True
+    )
+    out = self_proxy_student(x, t_out[1], output_hidden=True, output_att=True, average_att=True)
+
+    # 10. Self proxy student outputs class token of shape (bs, num_classes)
+    assert out[0].shape == (bs, num_classes)
+    # 11. Self proxy student outputs hidden state of shape (bs, seq_length, hidden_dim)
+    assert out[1].shape == (bs, seq_length, s_hidden_dim)
+    # 12. Self proxy student outputs averaged attention matrices of shape (bs, seq_length, seq_length)
     assert out[2].shape == (bs, seq_length, seq_length)
 
 

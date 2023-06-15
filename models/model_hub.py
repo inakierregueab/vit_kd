@@ -53,6 +53,21 @@ class ProxyStudent_S16(VisionTransformer):
         )
 
 
+class SelfProxyStudent_S16(VisionTransformer):
+    def __init__(self, **kwargs):
+        super().__init__(
+            image_size=224,
+            patch_size=16,
+            num_layers=12,
+            num_heads=6,
+            hidden_dim=384,
+            mlp_dim=1536,
+            proxy=True,
+            self_proxy=True,
+            **kwargs
+        )
+
+
 class DeiT_Ti16(VisionTransformer):
     def __init__(self, **kwargs):
         super().__init__(
@@ -210,6 +225,23 @@ if __name__ == "__main__":
     student_params = sum([np.prod(p.size()) for p in student_parameters])
 
     assert online_params == proxy_params + student_params
+
+    self_proxy = SelfProxyStudent_S16()
+    s_out = self_proxy(x, memory, output_hidden=True, output_att=True, average_att=True)
+
+    # 10. Self proxy outputs (cls_token, x, A)
+    assert len(s_out) == 3
+    # 11. cls_token is a tensor of shape (bs, num_classes)
+    assert s_out[0].shape == (bs, num_classes)
+    # 12. x is a tensor of shape (bs, seq_length, hidden_dim)
+    assert s_out[1].shape == (bs, seq_length, s_hidden_dim)
+    # 13. A is a tensor of shape (bs, seq_length, seq_length)
+    assert s_out[2].shape == (bs, seq_length, seq_length)
+    # 14. Less params requiring grad than proxy student but more than student
+    self_proxy_parameters = filter(lambda p: p.requires_grad, self_proxy.parameters())
+    self_proxy_params = sum([np.prod(p.size()) for p in self_proxy_parameters])
+
+    assert student_params < self_proxy_params < proxy_params
 
 
 

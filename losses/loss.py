@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from losses.softCE import SoftTargetCrossEntropy
 
 
-class DistillationLoss(nn.Module):
+class OfflineKDloss(nn.Module):
     def __init__(self,
                  distillation_type='none',
                  distillation_from='teacher',

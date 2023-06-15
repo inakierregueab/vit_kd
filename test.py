@@ -66,7 +66,7 @@ if __name__ == '__main__':
     args.add_argument('-c', '--config', default='test_config.json', type=str,
                       help='config file path (default: None)')
     # TODO: change from docker-compose
-    args.add_argument('-r', '--resume', default="./../saved/models/SCE/0520_072107/checkpoint-epoch40.pth", type=str,
+    args.add_argument('-r', '--resume', default="./../saved/models/OnlineFull/0614_133233/checkpoint-epoch100.pth", type=str,
                       help='path to latest checkpoint (default: None)')
     args.add_argument('-d', '--device', default=None, type=str,
                       help='indices of GPUs to enable (default: all)')

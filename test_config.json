@@ -1,9 +1,9 @@
 {
-    "name": "TEST_sce",
+    "name": "TEST",
     "gpu_list": [0],
 
     "arch": {
-        "type": "TandemTPS",
+        "type": "OnlinePSS",
         "args": {}
     },
 
@@ -11,7 +11,7 @@
         "type": "TestLoader",
         "args":{
             "data_dir": "./../data/",
-            "batch_size": 64,
+            "batch_size": 160,
             "num_workers": 4,
             "pin_memory": true,
             "persistent_workers": true,

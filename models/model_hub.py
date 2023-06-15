@@ -122,6 +122,25 @@ class TandemPSS(nn.Module):
         return s_output, t_output, p_output
 
 
+class OnlinePSS(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.teacher = Teacher_ViTB16()
+        self.proxy = ProxyStudent_S16()
+        self.student = DeiT_S16()
+
+        for param in self.teacher.parameters():
+            param.requires_grad = False
+
+    def forward(self, x):
+        with torch.no_grad():
+            t_output = self.teacher(x)
+
+        p_output = self.proxy(x, t_output[1], output_hidden=True)
+        s_output = self.student(x, output_hidden=True)
+        return s_output, t_output, p_output
+
+
 # Testing unit
 if __name__ == "__main__":
 
@@ -176,10 +195,21 @@ if __name__ == "__main__":
     # 7. Logits have same shape
     assert s_out[0].shape == t_out[0].shape == p_out[0].shape == (bs, num_classes)
 
-    # Hidden states have same shape
+    # 8. Hidden states have same shape
     assert s_out[1].shape == p_out[1].shape == (bs, seq_length, s_hidden_dim)
 
+    # 9. Online tandem has same number of trainable params as proxy plus student
+    online = OnlinePSS()
+    online_parameters = filter(lambda p: p.requires_grad, online.parameters())
+    online_params = sum([np.prod(p.size()) for p in online_parameters])
 
+    proxy_parameters = filter(lambda p: p.requires_grad, online.proxy.parameters())
+    proxy_params = sum([np.prod(p.size()) for p in proxy_parameters])
+
+    student_parameters = filter(lambda p: p.requires_grad, online.student.parameters())
+    student_params = sum([np.prod(p.size()) for p in student_parameters])
+
+    assert online_params == proxy_params + student_params
 
 
 

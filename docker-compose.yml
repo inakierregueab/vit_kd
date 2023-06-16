@@ -19,9 +19,9 @@ services:
       - '12355:12355'
     volumes:
       - '.:/app'
-      - '/data-fast/127-data2/ierregue/ImageNet-1k:/data'
-      - '/data-fast/127-data2/ierregue/saved:/saved'
-    command: bash -c "CUDA_DEVICE_ORDER=PCI_BUS_ID python train.py --device 1,2,3,5"
+      - '/data-fast/128-data1/ierregue/ImageNet-1k:/data'
+      - '/data-fast/128-data1/ierregue/saved:/saved'
+    command: bash -c "CUDA_DEVICE_ORDER=PCI_BUS_ID python train.py --device 2,4,5,6"
     deploy:
       resources:
         reservations:

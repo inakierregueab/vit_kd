@@ -156,6 +156,21 @@ class OnlinePSS(nn.Module):
         return s_output, t_output, p_output
 
 
+class PreOnlinePSS(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.proxy = TandemTPS()
+        checkpoint = torch.load('./../../saved/weights/proxy_kl/checkpoint-epoch60.pth',
+                                map_location=torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu'))
+        self.proxy.load_state_dict(checkpoint['state_dict'])
+        self.student = DeiT_S16()
+
+    def forward(self, x):
+        p_output, t_output = self.proxy(x)
+        s_output = self.student(x, output_hidden=True)
+        return s_output, t_output, p_output
+
+
 # Testing unit
 if __name__ == "__main__":
 

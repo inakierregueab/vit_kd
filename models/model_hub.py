@@ -82,6 +82,7 @@ class DeiT_Ti16(VisionTransformer):
 
 
 class TandemTPS(nn.Module):
+    """PROXY STUDENT + TEACHER"""
     def __init__(self):
         super().__init__()
         self.teacher = Teacher_ViTB16()
@@ -92,10 +93,11 @@ class TandemTPS(nn.Module):
             t_output = self.teacher(x)
 
         s_output = self.proxy_student(x, t_output[1], output_hidden=True)   #TODO: output_hidden=True only in inference
-        return s_output, t_output
+        return s_output, t_output, 0
 
 
 class TandemTPS_noTT(nn.Module):
+    """PROXY STUDENT + TEACHER without teacher class token"""
     def __init__(self):
         super().__init__()
         self.teacher = Teacher_ViTB16()
@@ -118,6 +120,7 @@ class TandemTPS_noTT(nn.Module):
 
 
 class TandemPSS(nn.Module):
+    """PROXY STUDENT + STUDENT + TEACHER learning offline"""
     def __init__(self):
         super().__init__()
         self.proxy = TandemTPS()
@@ -138,6 +141,7 @@ class TandemPSS(nn.Module):
 
 
 class OnlinePSS(nn.Module):
+    """PROXY STUDENT + STUDENT + TEACHER learning online"""
     def __init__(self):
         super().__init__()
         self.teacher = Teacher_ViTB16()
@@ -157,6 +161,7 @@ class OnlinePSS(nn.Module):
 
 
 class PreOnlinePSS(nn.Module):
+    """PROXY STUDENT + STUDENT + TEACHER learning online with proxy pretrained"""
     def __init__(self):
         super().__init__()
         self.proxy = TandemTPS()

@@ -3,7 +3,7 @@
     "gpu_list": [0],
 
     "arch": {
-        "type": "OnlinePSS",
+        "type": "TandemTPS",
         "args": {}
     },
 

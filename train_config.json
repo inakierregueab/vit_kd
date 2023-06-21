@@ -1,6 +1,6 @@
 {
     "name": "ProxyXPS",
-    "gpu_list": [0,1,2,3],
+    "gpu_list": [0,1,2],
 
     "arch": {
         "type": "TandemTPS",
@@ -10,7 +10,7 @@
         "type": "IMNETDataLoader",
         "args":{
             "data_dir": "./../data/",
-            "batch_size": 256,
+            "batch_size": 288,
             "num_workers": 8,
             "pin_memory": true,
             "persistent_workers": true,
@@ -66,11 +66,11 @@
         "warmup_epochs": 5
     },
     "trainer": {
-        "epochs": 100,
+        "epochs": 50,
         "val_freq": 1,
 
         "save_dir": "./../saved/",
-        "save_period": 10,
+        "save_period": 5,
         "verbosity": 2,
         
         "monitor": "min val_loss",

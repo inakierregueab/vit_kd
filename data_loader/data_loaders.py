@@ -41,23 +41,23 @@ class IMNETDataLoader(DataLoader):
 
         # Subset for debugging
         # define the size of your subset
-        train_subset_size = 100000
-        val_subset_size = 5000
+        train_subset_size = 250000
+        #val_subset_size = 5000
         # get the indices of all images in the full dataset
         train_indices = list(range(len(self.train_dataset)))
         val_indices = list(range(len(self.val_dataset)))
         # randomly choose a subset of the indices
         train_subset_indices = np.random.choice(train_indices, train_subset_size, replace=False)
-        val_subset_indices = np.random.choice(val_indices, val_subset_size, replace=False)
+        #val_subset_indices = np.random.choice(val_indices, val_subset_size, replace=False)
         # Subset for distributed training
         if is_distributed:
             torch.distributed.broadcast(torch.tensor(train_subset_indices, device=rank), 0)
-            torch.distributed.broadcast(torch.tensor(val_subset_indices, device=rank), 0)
+            #torch.distributed.broadcast(torch.tensor(val_subset_indices, device=rank), 0)
             torch.distributed.barrier()
 
         # generate subset
         self.train_sub_dataset = Subset(self.train_dataset, train_subset_indices)
-        self.val_sub_dataset = Subset(self.train_dataset, val_subset_indices)
+        #self.val_sub_dataset = Subset(self.train_dataset, val_subset_indices)
 
         # TODO: delete subset when full training
         if is_distributed:
@@ -73,7 +73,7 @@ class IMNETDataLoader(DataLoader):
                       'This will slightly alter validation results as extra duplicate entries are added to achieve '
                       'equal num of samples per-process.')
             # TODO: drop last and shuffle for better graphics
-            self.valid_sampler = DistributedSampler(self.val_sub_dataset, num_replicas=world_size, rank=rank,
+            self.valid_sampler = DistributedSampler(self.val_dataset, num_replicas=world_size, rank=rank,
                                                     shuffle=True, drop_last=True)
         else:
             self.train_sampler = RandomSampler(self.train_dataset)
@@ -120,7 +120,7 @@ class IMNETDataLoader(DataLoader):
         return transforms.Compose(t)
 
     def split_validation(self):
-        return DataLoader(dataset=self.val_sub_dataset, sampler=self.valid_sampler, drop_last=True,  **self.init_kwargs)
+        return DataLoader(dataset=self.val_dataset, sampler=self.valid_sampler, drop_last=True,  **self.init_kwargs)
 
 
 

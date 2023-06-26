@@ -1,6 +1,8 @@
 import numpy as np
 import torch
 import torch.distributed as dist
+from matplotlib import pyplot as plt
+from matplotlib.colors import LogNorm
 
 from timm.data import Mixup
 from time import time
@@ -106,6 +108,15 @@ class Trainer(BaseTrainer):
                         elapsed_time,
                         iter_time))
 
+                    fig = plt.figure()
+                    plt.imshow(outputs[0][2][0].cpu().detach().numpy(), cmap='magma', norm=LogNorm(vmax=0.99, vmin=1e-4))
+                    plt.colorbar()
+                    self.writer.add_figure('attention_matrix', fig)
+
+                    hidden_state = outputs[0][1][0]  # Pick only first image of batch
+                    global_std_indicator = torch.mean(torch.std(hidden_state, dim=0), dim=0)
+                    self.writer.add_scalar('std_across_tokens', global_std_indicator)
+
             if batch_idx == self.len_epoch:
                 break
 
@@ -113,9 +124,6 @@ class Trainer(BaseTrainer):
             log = self.train_metrics.result()
             self.writer.add_scalar('time/epoch', elapsed_time, epoch=epoch)
             self.writer.add_scalar('loss/loss_per_epoch', log['loss'], epoch=epoch)
-
-            #att_matrix = outputs[0][2].mean(0).squeeze(0)
-            #self.writer.add_image('att_matrix', att_matrix * 255, dataformats='HW')
 
         if self.do_validation & (epoch % self.val_freq == 0):
             val_log = self._valid_epoch(epoch)

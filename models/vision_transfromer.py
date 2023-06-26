@@ -184,16 +184,8 @@ class CSPEncoder(nn.Module):
         self_block = EncoderBlock
 
         self.layers = nn.ModuleList()
-        for i in range(num_layers//2):
-            self.layers.append(cross_block(
-                num_heads,
-                hidden_dim,
-                mlp_dim,
-                dropout,
-                attention_dropout,
-                norm_layer,
-            ))
-            # TODO: maybe reduce number of heads for self attention (compression)
+
+        for i in range(num_layers - 2):
             self.layers.append(self_block(
                 num_heads,
                 hidden_dim,
@@ -202,6 +194,26 @@ class CSPEncoder(nn.Module):
                 attention_dropout,
                 norm_layer,
             ))
+
+            # TODO: maybe reduce number of heads for self attention (compression)
+        self.layers.append(cross_block(
+            num_heads,
+            hidden_dim,
+            mlp_dim,
+            dropout,
+            attention_dropout,
+            norm_layer,
+        ))
+
+        self.layers.append(self_block(
+            num_heads,
+            hidden_dim,
+            mlp_dim,
+            dropout,
+            attention_dropout,
+            norm_layer,
+        ))
+
         self.ln = norm_layer(hidden_dim)
 
     def forward(self, input: torch.Tensor,
@@ -216,7 +228,7 @@ class CSPEncoder(nn.Module):
 
         for layer in self.layers:
             if isinstance(layer, ProxyEncoderBlock):
-                x, A = layer(x, memory=memory, output_att=output_att, average_att=average_att)
+                x, _ = layer(x, memory=memory, output_att=output_att, average_att=average_att)
             elif isinstance(layer, EncoderBlock):
                 x, A = layer(x, output_att=output_att, average_att=average_att)
 

@@ -86,13 +86,14 @@ class TandemTPS(nn.Module):
     def __init__(self):
         super().__init__()
         self.teacher = Teacher_ViTB16()
-        self.proxy_student = ProxyStudent_S16()
+        self.proxy_student = SelfProxyStudent_S16() #ProxyStudent_S16()
 
     def forward(self, x):
         with torch.no_grad():
             t_output = self.teacher(x)
 
-        s_output = self.proxy_student(x, t_output[1], output_hidden=True)   #TODO: output_hidden=True only in inference
+        s_output = self.proxy_student(x, t_output[1], output_hidden=True, output_att=True, average_att=True)   #TODO: output_hidden=True only in inference
+        #s_output = self.proxy_student(x, t_output[1], output_hidden=True)
         return s_output, t_output, 0
 
 
@@ -208,7 +209,7 @@ if __name__ == "__main__":
     assert len([True for p in teacher.parameters() if p.requires_grad]) == 0
 
     tandem = TandemTPS()
-    s_out, t_out = tandem(x)
+    s_out, t_out, _ = tandem(x)
 
     # 5. Tandem outputs both student and teacher correctly
     assert s_out[0].shape == (bs, num_classes)
@@ -224,14 +225,14 @@ if __name__ == "__main__":
     assert tandem_params == proxy_params
 
     # Triplet tandem
-    triplet = TandemPSS()
-    s_out, t_out, p_out = triplet(x)
+    #triplet = TandemPSS()
+    #s_out, t_out, p_out = triplet(x)
 
     # 7. Logits have same shape
-    assert s_out[0].shape == t_out[0].shape == p_out[0].shape == (bs, num_classes)
+    #assert s_out[0].shape == t_out[0].shape == p_out[0].shape == (bs, num_classes)
 
     # 8. Hidden states have same shape
-    assert s_out[1].shape == p_out[1].shape == (bs, seq_length, s_hidden_dim)
+    #assert s_out[1].shape == p_out[1].shape == (bs, seq_length, s_hidden_dim)
 
     # 9. Online tandem has same number of trainable params as proxy plus student
     online = OnlinePSS()

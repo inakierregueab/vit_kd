@@ -59,9 +59,9 @@ class SelfProxyStudent_S16(VisionTransformer):
             image_size=224,
             patch_size=16,
             num_layers=12,
-            num_heads=6,
+            num_heads=3,
             hidden_dim=384,
-            mlp_dim=1536,
+            mlp_dim=768,
             proxy=True,
             self_proxy=True,
             **kwargs
@@ -146,7 +146,7 @@ class OnlinePSS(nn.Module):
     def __init__(self):
         super().__init__()
         self.teacher = Teacher_ViTB16()
-        self.proxy = ProxyStudent_S16()
+        self.proxy = SelfProxyStudent_S16() #ProxyStudent_S16()
         self.student = DeiT_S16()
 
         for param in self.teacher.parameters():
@@ -175,6 +175,21 @@ class PreOnlinePSS(nn.Module):
         p_output, t_output = self.proxy(x)
         s_output = self.student(x, output_hidden=True)
         return s_output, t_output, p_output
+
+
+class Tandem_TS(nn.Module):
+    """STUDENT + TEACHER"""
+    def __init__(self):
+        super().__init__()
+        self.teacher = Teacher_ViTB16()
+        self.student = DeiT_S16()
+
+    def forward(self, x):
+        with torch.no_grad():
+            t_output = self.teacher(x)
+
+        s_output = self.student(x, output_hidden=True)
+        return s_output, t_output, 0
 
 
 # Testing unit

@@ -86,7 +86,7 @@ class Trainer(BaseTrainer):
                 self.train_metrics.update('loss', loss.item())
                 self.writer.add_scalar('loss/base_loss', base_loss.item())
                 self.writer.add_scalar('loss/dist_loss', dist_loss.item())
-                #self.writer.add_scalar('loss/hidden_loss', hidden_loss.item())
+                self.writer.add_scalar('loss/hidden_loss', hidden_loss.item())
 
                 for key, value in metrics.items():
                     self.train_metrics.update(key, value)
@@ -108,14 +108,14 @@ class Trainer(BaseTrainer):
                         elapsed_time,
                         iter_time))
 
-                    fig = plt.figure()
+                    """fig = plt.figure()
                     plt.imshow(outputs[0][2][0].cpu().detach().numpy(), cmap='magma', norm=LogNorm(vmax=0.99, vmin=1e-4))
                     plt.colorbar()
                     self.writer.add_figure('attention_matrix', fig)
 
                     hidden_state = outputs[0][1][0]  # Pick only first image of batch
                     global_std_indicator = torch.mean(torch.std(hidden_state, dim=0), dim=0)
-                    self.writer.add_scalar('std_across_tokens', global_std_indicator)
+                    self.writer.add_scalar('std_across_tokens', global_std_indicator)"""
 
             if batch_idx == self.len_epoch:
                 break

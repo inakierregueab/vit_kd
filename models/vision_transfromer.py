@@ -185,17 +185,15 @@ class CSPEncoder(nn.Module):
 
         self.layers = nn.ModuleList()
 
-        for i in range(num_layers - 2):
-            self.layers.append(self_block(
-                num_heads,
-                hidden_dim,
-                mlp_dim,
-                dropout,
-                attention_dropout,
-                norm_layer,
-            ))
+        self.layers.append(self_block(
+            num_heads,
+            hidden_dim,
+            mlp_dim,
+            dropout,
+            attention_dropout,
+            norm_layer,
+        ))
 
-            # TODO: maybe reduce number of heads for self attention (compression)
         self.layers.append(cross_block(
             num_heads,
             hidden_dim,

@@ -1,6 +1,6 @@
 {
-    "name": "Online_GS",
-    "gpu_list": [0,1,2],
+    "name": "CompressorGS",
+    "gpu_list": [0,1,2,3],
 
     "arch": {
         "type": "OnlinePSS",
@@ -10,7 +10,7 @@
         "type": "IMNETDataLoader",
         "args":{
             "data_dir": "./../data/",
-            "batch_size": 160,
+            "batch_size": 256,
             "num_workers": 8,
             "pin_memory": true,
             "persistent_workers": true,
@@ -33,7 +33,7 @@
         "prob": 1.0,
         "switch_prob": 0.5,
         "mode": "batch",
-        "label_smoothing": 0.1,
+        "label_smoothing": 0.05,
         "num_classes": 1000
     },
     "optimizer": {
@@ -41,18 +41,17 @@
         "args":{
             "lr": 1e-3,
             "betas": [0.9,0.999],
-            "weight_decay": 0.1
+            "weight_decay": 0.15
         }
     },
     "loss": {
         "type": "OnlineKDLoss",
         "args": {
-            "base_gamma": 0.3,
             "distillation_type": "soft_kl",
             "distillation_from": "teacher",
             "distillation_alpha": 0.5,
             "distillation_tau": 1.5,
-            "hidden_state_criterion": "cos",
+            "hidden_state_criterion": "mse",
             "hidden_state_beta": 0.3
         }
     },
@@ -62,16 +61,16 @@
     "lr_scheduler": {
         "sched": "cosine",
         "cooldown_epochs": 10,
-        "min_lr": 1e-5,
+        "min_lr": 1e-7,
         "warmup_lr": 1e-6,
         "warmup_epochs": 5
     },
     "trainer": {
-        "epochs": 100,
+        "epochs": 50,
         "val_freq": 1,
 
         "save_dir": "./../saved/",
-        "save_period": 150,
+        "save_period": 100,
         "verbosity": 2,
         
         "monitor": "min val_loss",

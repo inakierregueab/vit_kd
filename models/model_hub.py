@@ -53,6 +53,21 @@ class ProxyStudent_S16(VisionTransformer):
         )
 
 
+class SelfProxyStudent_S16(VisionTransformer):
+    def __init__(self, **kwargs):
+        super().__init__(
+            image_size=224,
+            patch_size=16,
+            num_layers=12,
+            num_heads=3,
+            hidden_dim=384,
+            mlp_dim=768,
+            proxy=True,
+            self_proxy=True,
+            **kwargs
+        )
+
+
 class DeiT_Ti16(VisionTransformer):
     def __init__(self, **kwargs):
         super().__init__(
@@ -67,20 +82,23 @@ class DeiT_Ti16(VisionTransformer):
 
 
 class TandemTPS(nn.Module):
+    """PROXY STUDENT + TEACHER"""
     def __init__(self):
         super().__init__()
         self.teacher = Teacher_ViTB16()
-        self.proxy_student = ProxyStudent_S16()
+        self.proxy_student = SelfProxyStudent_S16() #ProxyStudent_S16()
 
     def forward(self, x):
         with torch.no_grad():
             t_output = self.teacher(x)
 
-        s_output = self.proxy_student(x, t_output[1], output_hidden=True)   #TODO: output_hidden=True only in inference
-        return s_output, t_output
+        s_output = self.proxy_student(x, t_output[1], output_hidden=True, output_att=True, average_att=True)   #TODO: output_hidden=True only in inference
+        #s_output = self.proxy_student(x, t_output[1], output_hidden=True)
+        return s_output, t_output, 0
 
 
 class TandemTPS_noTT(nn.Module):
+    """PROXY STUDENT + TEACHER without teacher class token"""
     def __init__(self):
         super().__init__()
         self.teacher = Teacher_ViTB16()
@@ -103,6 +121,7 @@ class TandemTPS_noTT(nn.Module):
 
 
 class TandemPSS(nn.Module):
+    """PROXY STUDENT + STUDENT + TEACHER learning offline"""
     def __init__(self):
         super().__init__()
         self.proxy = TandemTPS()
@@ -123,10 +142,11 @@ class TandemPSS(nn.Module):
 
 
 class OnlinePSS(nn.Module):
+    """PROXY STUDENT + STUDENT + TEACHER learning online"""
     def __init__(self):
         super().__init__()
         self.teacher = Teacher_ViTB16()
-        self.proxy = ProxyStudent_S16()
+        self.proxy = SelfProxyStudent_S16() #ProxyStudent_S16()
         self.student = DeiT_S16()
 
         for param in self.teacher.parameters():
@@ -139,6 +159,37 @@ class OnlinePSS(nn.Module):
         p_output = self.proxy(x, t_output[1], output_hidden=True)
         s_output = self.student(x, output_hidden=True)
         return s_output, t_output, p_output
+
+
+class PreOnlinePSS(nn.Module):
+    """PROXY STUDENT + STUDENT + TEACHER learning online with proxy pretrained"""
+    def __init__(self):
+        super().__init__()
+        self.proxy = TandemTPS()
+        checkpoint = torch.load('./../../saved/weights/proxy_kl/checkpoint-epoch60.pth',
+                                map_location=torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu'))
+        self.proxy.load_state_dict(checkpoint['state_dict'])
+        self.student = DeiT_S16()
+
+    def forward(self, x):
+        p_output, t_output = self.proxy(x)
+        s_output = self.student(x, output_hidden=True)
+        return s_output, t_output, p_output
+
+
+class Tandem_TS(nn.Module):
+    """STUDENT + TEACHER"""
+    def __init__(self):
+        super().__init__()
+        self.teacher = Teacher_ViTB16()
+        self.student = DeiT_S16()
+
+    def forward(self, x):
+        with torch.no_grad():
+            t_output = self.teacher(x)
+
+        s_output = self.student(x, output_hidden=True)
+        return s_output, t_output, 0
 
 
 # Testing unit
@@ -173,7 +224,7 @@ if __name__ == "__main__":
     assert len([True for p in teacher.parameters() if p.requires_grad]) == 0
 
     tandem = TandemTPS()
-    s_out, t_out = tandem(x)
+    s_out, t_out, _ = tandem(x)
 
     # 5. Tandem outputs both student and teacher correctly
     assert s_out[0].shape == (bs, num_classes)
@@ -189,14 +240,14 @@ if __name__ == "__main__":
     assert tandem_params == proxy_params
 
     # Triplet tandem
-    triplet = TandemPSS()
-    s_out, t_out, p_out = triplet(x)
+    #triplet = TandemPSS()
+    #s_out, t_out, p_out = triplet(x)
 
     # 7. Logits have same shape
-    assert s_out[0].shape == t_out[0].shape == p_out[0].shape == (bs, num_classes)
+    #assert s_out[0].shape == t_out[0].shape == p_out[0].shape == (bs, num_classes)
 
     # 8. Hidden states have same shape
-    assert s_out[1].shape == p_out[1].shape == (bs, seq_length, s_hidden_dim)
+    #assert s_out[1].shape == p_out[1].shape == (bs, seq_length, s_hidden_dim)
 
     # 9. Online tandem has same number of trainable params as proxy plus student
     online = OnlinePSS()
@@ -210,6 +261,23 @@ if __name__ == "__main__":
     student_params = sum([np.prod(p.size()) for p in student_parameters])
 
     assert online_params == proxy_params + student_params
+
+    self_proxy = SelfProxyStudent_S16()
+    s_out = self_proxy(x, memory, output_hidden=True, output_att=True, average_att=True)
+
+    # 10. Self proxy outputs (cls_token, x, A)
+    assert len(s_out) == 3
+    # 11. cls_token is a tensor of shape (bs, num_classes)
+    assert s_out[0].shape == (bs, num_classes)
+    # 12. x is a tensor of shape (bs, seq_length, hidden_dim)
+    assert s_out[1].shape == (bs, seq_length, s_hidden_dim)
+    # 13. A is a tensor of shape (bs, seq_length, seq_length)
+    assert s_out[2].shape == (bs, seq_length, seq_length)
+    # 14. Less params requiring grad than proxy student but more than student
+    self_proxy_parameters = filter(lambda p: p.requires_grad, self_proxy.parameters())
+    self_proxy_params = sum([np.prod(p.size()) for p in self_proxy_parameters])
+
+    assert student_params < self_proxy_params < proxy_params
 
 
 

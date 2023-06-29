@@ -214,12 +214,63 @@ class OnlineKDLoss(BaseKDloss):
                             hidden_state_loss * self.hidden_state_beta
 
         # Proxy loss
-        p_total_loss = p_base_loss * (1-self.distillation_alpha-self.hidden_state_beta) + \
+        """p_total_loss = p_base_loss * (1-self.distillation_alpha-self.hidden_state_beta) + \
                             p_distill_loss * self.distillation_alpha + \
-                            hidden_state_loss * self.hidden_state_beta
+                            hidden_state_loss * self.hidden_state_beta"""
+
+        p_total_loss = p_base_loss * 0.1 + p_distill_loss * 0.9
 
         # Compute total loss
         # TODO: We can add a weight to the proxy loss
         total_loss = s_total_loss + p_total_loss
+
+        return total_loss, s_base_loss, s_distill_loss, hidden_state_loss
+
+class TS_MLP_loss(BaseKDloss):
+    def __init__(self,
+                 distillation_type='none',
+                 distillation_from='teacher',
+                 distillation_alpha=0,
+                 distillation_tau=1,
+                 hidden_state_criterion='none',
+                 hidden_state_beta=0,
+                 rank=0):
+        super().__init__(distillation_type=distillation_type,
+                         distillation_from=distillation_from,
+                         distillation_alpha=distillation_alpha,
+                         distillation_tau=distillation_tau,
+                         hidden_state_criterion=hidden_state_criterion,
+                         hidden_state_beta=hidden_state_beta,
+                         rank=rank)
+
+    def forward(self, outputs, target):
+        """
+        :param outputs: tuple of (student_output, teacher_output, proxy_output) where each output is a tuple of (logits, hidden_states, attention_weights)
+        :param target: logits from target
+        :return: loss, base_loss, distill_loss
+        """
+
+        # Unpack outputs
+        student_logits, student_hidden_states, student_attention_weights = outputs[0]
+        teacher_logits, teacher_hidden_states, teacher_attention_weights = outputs[1]
+
+        # Compute base criterion
+        s_base_loss = self.base_criterion(student_logits, target)
+
+        # Compute distillation loss
+        s_distill_loss = self.compute_distillation_loss(student_logits, teacher_logits)
+
+        # Compute hidden state loss
+        # TODO: add MLP
+        # Use a MLP to map the hidden states to a vector of same size as student_hidden_states
+        hidden_state_loss = self.compute_hidden_state_loss(student_hidden_states, teacher_hidden_states)
+
+        # Student loss
+        s_total_loss = s_base_loss * (1-self.distillation_alpha-self.hidden_state_beta) + \
+                          s_distill_loss * self.distillation_alpha + \
+                            hidden_state_loss * self.hidden_state_beta
+
+        # Compute total loss
+        total_loss = s_total_loss
 
         return total_loss, s_base_loss, s_distill_loss, hidden_state_loss

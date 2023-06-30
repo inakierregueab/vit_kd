@@ -169,6 +169,7 @@ class OfflineKDloss(BaseKDloss):
 
 class OnlineKDLoss(BaseKDloss):
     def __init__(self,
+                 base_gamma=0,
                  distillation_type='none',
                  distillation_from='teacher',
                  distillation_alpha=0,
@@ -183,6 +184,7 @@ class OnlineKDLoss(BaseKDloss):
                          hidden_state_criterion=hidden_state_criterion,
                          hidden_state_beta=hidden_state_beta,
                          rank=rank)
+        self.base_gamma = base_gamma
 
     def forward(self, outputs, target):
         """
@@ -209,9 +211,8 @@ class OnlineKDLoss(BaseKDloss):
         hidden_state_loss = self.compute_hidden_state_loss(student_hidden_states, proxy_hidden_states)
 
         # Student loss
-        s_total_loss = s_base_loss * (1-self.distillation_alpha-self.hidden_state_beta) + \
-                          s_distill_loss * self.distillation_alpha + \
-                            hidden_state_loss * self.hidden_state_beta
+        s_total_loss = s_base_loss * self.base_gamma + s_distill_loss * self.distillation_alpha +\
+                       hidden_state_loss * self.hidden_state_beta
 
         # Proxy loss
         """p_total_loss = p_base_loss * (1-self.distillation_alpha-self.hidden_state_beta) + \

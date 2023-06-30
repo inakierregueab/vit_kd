@@ -42,6 +42,8 @@ def main(config, trials=None):
         config['loss']['args']['hidden_state_criterion'] = trials.suggest_categorical('l_crit', ['mse', 'cosine'])
         config['loss']['args']['hidden_state_beta'] = trials.suggest_float('l_beta', 0.0, 3.0)
 
+        config['loss']['args']['base_gamma'] = trials.suggest_float('base_gamma', 0.0, 3.0)
+
     n_gpus = len(config['gpu_list'])
     is_distributed = n_gpus > 1
 

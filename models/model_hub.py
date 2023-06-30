@@ -86,38 +86,15 @@ class TandemTPS(nn.Module):
     def __init__(self):
         super().__init__()
         self.teacher = Teacher_ViTB16()
-        self.proxy_student = SelfProxyStudent_S16() #ProxyStudent_S16()
+        self.proxy_student = ProxyStudent_S16() #SelfProxyStudent_S16() #
 
     def forward(self, x):
         with torch.no_grad():
             t_output = self.teacher(x)
 
-        s_output = self.proxy_student(x, t_output[1], output_hidden=True, output_att=True, average_att=True)   #TODO: output_hidden=True only in inference
-        #s_output = self.proxy_student(x, t_output[1], output_hidden=True)
+        #s_output = self.proxy_student(x, t_output[1], output_hidden=True, output_att=True, average_att=True)   #TODO: output_hidden=True only in inference
+        s_output = self.proxy_student(x, t_output[1], output_hidden=True)
         return s_output, t_output, 0
-
-
-class TandemTPS_noTT(nn.Module):
-    """PROXY STUDENT + TEACHER without teacher class token"""
-    def __init__(self):
-        super().__init__()
-        self.teacher = Teacher_ViTB16()
-        self.proxy_student = ProxyStudent_S16()
-        self.dummy_token = nn.Parameter(torch.zeros(1, 1, 768))
-
-    def forward(self, x):
-        with torch.no_grad():
-            t_output = self.teacher(x)
-            # TODO: seq_length of teacher is reduced by 1, thus attention matrices of proxy aren't square (bad if we want to use them for distillation)
-            t_hidden_state = t_output[1][:, 1:, :]
-
-        # TODO: train an auxiliary token?
-        n = x.shape[0]
-        dummy_token = self.dummy_token.expand(n, -1, -1)
-        t_hidden_state = torch.cat((dummy_token, t_hidden_state), dim=1)
-
-        s_output = self.proxy_student(x, t_hidden_state, output_hidden=False, output_att=True, average_att=True)
-        return s_output, t_output
 
 
 class TandemPSS(nn.Module):
@@ -131,11 +108,11 @@ class TandemPSS(nn.Module):
         for param in self.proxy.parameters():
             param.requires_grad = False
 
-        self.student = DeiT_S16()
+        self.student = DeiT_Ti16() #DeiT_S16()
 
     def forward(self, x):
         with torch.no_grad():
-            p_output, t_output = self.proxy(x)
+            p_output, t_output, _ = self.proxy(x)
 
         s_output = self.student(x, output_hidden=True)
         return s_output, t_output, p_output
@@ -157,22 +134,6 @@ class OnlinePSS(nn.Module):
             t_output = self.teacher(x)
 
         p_output = self.proxy(x, t_output[1], output_hidden=True)
-        s_output = self.student(x, output_hidden=True)
-        return s_output, t_output, p_output
-
-
-class PreOnlinePSS(nn.Module):
-    """PROXY STUDENT + STUDENT + TEACHER learning online with proxy pretrained"""
-    def __init__(self):
-        super().__init__()
-        self.proxy = TandemTPS()
-        checkpoint = torch.load('./../../saved/weights/proxy_kl/checkpoint-epoch60.pth',
-                                map_location=torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu'))
-        self.proxy.load_state_dict(checkpoint['state_dict'])
-        self.student = DeiT_S16()
-
-    def forward(self, x):
-        p_output, t_output = self.proxy(x)
         s_output = self.student(x, output_hidden=True)
         return s_output, t_output, p_output
 

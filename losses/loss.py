@@ -121,7 +121,7 @@ class Proxyloss(BaseKDloss):
         return total_loss, base_loss, distill_loss, 0
 
 
-class OfflineKDloss(BaseKDloss):
+class OfflineKDLoss(BaseKDloss):
     def __init__(self,
                  distillation_type='none',
                  distillation_from='teacher',
@@ -214,11 +214,11 @@ class OnlineKDLoss(BaseKDloss):
                             hidden_state_loss * self.hidden_state_beta
 
         # Proxy loss
-        """p_total_loss = p_base_loss * (1-self.distillation_alpha-self.hidden_state_beta) + \
+        p_total_loss = p_base_loss * (1-self.distillation_alpha-self.hidden_state_beta) + \
                             p_distill_loss * self.distillation_alpha + \
-                            hidden_state_loss * self.hidden_state_beta"""
+                            hidden_state_loss * self.hidden_state_beta
 
-        p_total_loss = p_base_loss * 0.1 + p_distill_loss * 0.9
+        #p_total_loss = p_base_loss * 0.1 + p_distill_loss * 0.9 # TODO: try this
 
         # Compute total loss
         # TODO: We can add a weight to the proxy loss

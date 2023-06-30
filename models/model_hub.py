@@ -60,7 +60,7 @@ class SelfProxyStudent_S16(VisionTransformer):
             patch_size=16,
             num_layers=12,
             num_heads=3,
-            hidden_dim=384,
+            hidden_dim=192,
             mlp_dim=768,
             proxy=True,
             self_proxy=True,
@@ -81,50 +81,50 @@ class DeiT_Ti16(VisionTransformer):
         )
 
 
-class TandemTPS(nn.Module):
+class TP(nn.Module):
     """PROXY STUDENT + TEACHER"""
     def __init__(self):
         super().__init__()
         self.teacher = Teacher_ViTB16()
-        self.proxy_student = ProxyStudent_S16() #SelfProxyStudent_S16() #
+        self.proxy_student = SelfProxyStudent_S16()
 
     def forward(self, x):
         with torch.no_grad():
             t_output = self.teacher(x)
 
-        #s_output = self.proxy_student(x, t_output[1], output_hidden=True, output_att=True, average_att=True)   #TODO: output_hidden=True only in inference
+        #s_output = self.proxy_student(x, t_output[1], output_hidden=True, output_att=True, average_att=True)
         s_output = self.proxy_student(x, t_output[1], output_hidden=True)
         return s_output, t_output, 0
 
 
-class TandemPSS(nn.Module):
+class TPS_offline(nn.Module):
     """PROXY STUDENT + STUDENT + TEACHER learning offline"""
     def __init__(self):
         super().__init__()
-        self.proxy = TandemTPS()
+        self.teacher_proxy = TP()
         checkpoint = torch.load('./../../saved/weights/proxy_kl/checkpoint-epoch60.pth',
                                 map_location=torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu'))
-        self.proxy.load_state_dict(checkpoint['state_dict'])
-        for param in self.proxy.parameters():
+        self.teacher_proxy.load_state_dict(checkpoint['state_dict'])
+        for param in self.teacher_proxy.parameters():
             param.requires_grad = False
 
-        self.student = DeiT_Ti16() #DeiT_S16()
+        self.student = DeiT_S16()
 
     def forward(self, x):
         with torch.no_grad():
-            p_output, t_output, _ = self.proxy(x)
+            p_output, t_output, _ = self.teacher_proxy(x)
 
         s_output = self.student(x, output_hidden=True)
         return s_output, t_output, p_output
 
 
-class OnlinePSS(nn.Module):
+class TPS_online(nn.Module):
     """PROXY STUDENT + STUDENT + TEACHER learning online"""
     def __init__(self):
         super().__init__()
         self.teacher = Teacher_ViTB16()
         self.proxy = SelfProxyStudent_S16() #ProxyStudent_S16()
-        self.student = DeiT_S16()
+        self.student = DeiT_Ti16()
 
         for param in self.teacher.parameters():
             param.requires_grad = False
@@ -138,7 +138,7 @@ class OnlinePSS(nn.Module):
         return s_output, t_output, p_output
 
 
-class Tandem_TS(nn.Module):
+class TS(nn.Module):
     """STUDENT + TEACHER"""
     def __init__(self):
         super().__init__()

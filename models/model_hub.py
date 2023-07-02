@@ -56,8 +56,8 @@ class ProxyStudent_S16(VisionTransformer):
 class SelfProxyStudent_S16(VisionTransformer):
     def __init__(self, **kwargs):
         super().__init__(
-            image_size=224,
-            patch_size=16,
+            image_size=64,
+            patch_size=8,
             num_layers=12,
             num_heads=3,
             hidden_dim=192,
@@ -71,8 +71,8 @@ class SelfProxyStudent_S16(VisionTransformer):
 class DeiT_Ti16(VisionTransformer):
     def __init__(self, **kwargs):
         super().__init__(
-            image_size=224,
-            patch_size=16,
+            image_size=64,
+            patch_size=8,
             num_layers=12,
             num_heads=3,
             hidden_dim=192,

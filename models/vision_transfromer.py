@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, List, NamedTuple, Optional
 import torch
 import torch.nn as nn
 from torchvision.models.vision_transformer import MLPBlock
+from torchvision.transforms import Resize
 
 
 class ProxyEncoderBlock(nn.Module):
@@ -333,6 +334,8 @@ class VisionTransformer(nn.Module):
             nn.init.zeros_(self.heads.head.weight)
             nn.init.zeros_(self.heads.head.bias)
 
+        self.resize = Resize((image_size,image_size))
+
     def _process_input(self, x: torch.Tensor) -> torch.Tensor:
         n, c, h, w = x.shape
         p = self.patch_size
@@ -374,6 +377,7 @@ class VisionTransformer(nn.Module):
         """
 
         # Reshape and permute the input tensor
+        x = self.resize(x)
         x = self._process_input(x)
         n = x.shape[0]
 

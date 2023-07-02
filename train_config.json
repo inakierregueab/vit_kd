@@ -1,16 +1,16 @@
 {
-    "name": "Tiny",
-    "gpu_list": [0,1,2,3],
+    "name": "MoreProxy",
+    "gpu_list": [0,1,2],
 
     "arch": {
-        "type": "TPS_online",
+        "type": "TP",
         "args": {}
     },
     "data_loader": {
         "type": "IMNETDataLoader",
         "args":{
             "data_dir": "./../data/",
-            "batch_size": 512,
+            "batch_size": 320,
             "num_workers": 8,
             "pin_memory": true,
             "persistent_workers": true,
@@ -45,12 +45,12 @@
         }
     },
     "loss": {
-        "type": "OnlineKDLoss",
+        "type": "ProxyKDLoss",
         "args": {
             "distillation_type": "soft_kl",
             "distillation_from": "teacher",
-            "distillation_alpha": 0.3,
-            "distillation_tau": 2,
+            "distillation_alpha": 0.9,
+            "distillation_tau": 1.5,
             "hidden_state_criterion": "mse",
             "hidden_state_beta": 0.3
         }
@@ -70,7 +70,7 @@
         "val_freq": 1,
 
         "save_dir": "./../saved/",
-        "save_period": 100,
+        "save_period": 5,
         "verbosity": 2,
         
         "monitor": "min val_loss",

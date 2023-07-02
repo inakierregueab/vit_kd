@@ -86,7 +86,7 @@ class Trainer(BaseTrainer):
                 self.train_metrics.update('loss', loss.item())
                 self.writer.add_scalar('loss/base_loss', base_loss.item())
                 self.writer.add_scalar('loss/dist_loss', dist_loss.item())
-                self.writer.add_scalar('loss/hidden_loss', hidden_loss.item())
+                #self.writer.add_scalar('loss/hidden_loss', hidden_loss.item())
 
                 for key, value in metrics.items():
                     self.train_metrics.update(key, value)

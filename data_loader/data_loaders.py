@@ -41,22 +41,22 @@ class IMNETDataLoader(DataLoader):
 
         # Subset for debugging
         # define the size of your subset
-        #train_subset_size = 250000
+        train_subset_size = 250000
         #val_subset_size = 5000
         # get the indices of all images in the full dataset
         train_indices = list(range(len(self.train_dataset)))
         val_indices = list(range(len(self.val_dataset)))
         # randomly choose a subset of the indices
-        #train_subset_indices = np.random.choice(train_indices, train_subset_size, replace=False)
+        train_subset_indices = np.random.choice(train_indices, train_subset_size, replace=False)
         #val_subset_indices = np.random.choice(val_indices, val_subset_size, replace=False)
         # Subset for distributed training
         if is_distributed:
-            #torch.distributed.broadcast(torch.tensor(train_subset_indices, device=rank), 0)
+            torch.distributed.broadcast(torch.tensor(train_subset_indices, device=rank), 0)
             #torch.distributed.broadcast(torch.tensor(val_subset_indices, device=rank), 0)
             torch.distributed.barrier()
 
         # generate subset
-        #self.train_sub_dataset = Subset(self.train_dataset, train_subset_indices)
+        self.train_sub_dataset = Subset(self.train_dataset, train_subset_indices)
         #self.val_sub_dataset = Subset(self.train_dataset, val_subset_indices)
 
         # TODO: delete subset when full training
@@ -64,7 +64,7 @@ class IMNETDataLoader(DataLoader):
             if repeated_aug:
                 self.train_sampler = RASampler(self.train_sub_dataset, num_replicas=world_size, rank=rank, shuffle=True)
             else:
-                self.train_sampler = DistributedSampler(self.train_dataset, num_replicas=world_size, rank=rank,
+                self.train_sampler = DistributedSampler(self.train_sub_dataset, num_replicas=world_size, rank=rank,
                                                         shuffle=True, drop_last=False)
 
             # TODO: add flag for distributed validation
@@ -86,7 +86,7 @@ class IMNETDataLoader(DataLoader):
             'pin_memory': pin_memory,
             'persistent_workers': persistent_workers,
         }
-        super().__init__(dataset=self.train_dataset,sampler=self.train_sampler,drop_last=True,**self.init_kwargs)
+        super().__init__(dataset=self.train_sub_dataset,sampler=self.train_sampler,drop_last=True,**self.init_kwargs)
 
     def get_transforms(self, transform_config, is_train):
         resize_im = transform_config['input_size'] > 32

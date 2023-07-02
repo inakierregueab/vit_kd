@@ -80,7 +80,7 @@ class BaseKDloss(nn.Module):
         raise NotImplementedError
 
 
-class Proxyloss(BaseKDloss):
+class ProxyKDLoss(BaseKDloss):
     def __init__(self,
                  distillation_type='none',
                  distillation_from='teacher',
@@ -226,7 +226,7 @@ class OnlineKDLoss(BaseKDloss):
 
         return total_loss, s_base_loss, s_distill_loss, hidden_state_loss
 
-class TS_MLP_loss(BaseKDloss):
+class StudentKDLoss(BaseKDloss):
     def __init__(self,
                  distillation_type='none',
                  distillation_from='teacher',
@@ -261,16 +261,11 @@ class TS_MLP_loss(BaseKDloss):
         s_distill_loss = self.compute_distillation_loss(student_logits, teacher_logits)
 
         # Compute hidden state loss
-        # TODO: add MLP
-        # Use a MLP to map the hidden states to a vector of same size as student_hidden_states
         hidden_state_loss = self.compute_hidden_state_loss(student_hidden_states, teacher_hidden_states)
 
         # Student loss
-        s_total_loss = s_base_loss * (1-self.distillation_alpha-self.hidden_state_beta) + \
+        total_loss = s_base_loss * (1-self.distillation_alpha-self.hidden_state_beta) + \
                           s_distill_loss * self.distillation_alpha + \
                             hidden_state_loss * self.hidden_state_beta
-
-        # Compute total loss
-        total_loss = s_total_loss
 
         return total_loss, s_base_loss, s_distill_loss, hidden_state_loss

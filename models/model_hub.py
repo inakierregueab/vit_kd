@@ -150,9 +150,9 @@ class TS(nn.Module):
         with torch.no_grad():
             t_output = self.teacher(x)
 
-        s_output = self.student(x, output_hidden=True)
-        s_hidden_up = self.mlp(s_output[1])
-        return s_output, t_output, s_hidden_up
+        cls_token, hidden, matrix = self.student(x, output_hidden=True)
+        hidden = self.mlp(hidden)
+        return (cls_token, hidden, matrix), t_output, 0
 
 
 # Testing unit
@@ -243,10 +243,10 @@ if __name__ == "__main__":
    #assert student_params < self_proxy_params < proxy_params
 
     ts = TS()
-    s_out, t_out, s_hidden_up = ts(x)
+    s_out, t_out, _ = ts(x)
 
     # 15. TS student hidden state is a tensor of same shape as teacher hidden state
-    assert s_hidden_up.shape == t_out[1].shape
+    assert s_out[1].shape == t_out[1].shape
 
 
 

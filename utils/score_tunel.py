@@ -7,6 +7,9 @@ class Scorer:
         self.score = None
         self.is_distributed = is_distributed
         self.fpath = os.path.join('./../saved', f'score_{name}.txt')
+        if not os.path.exists(self.fpath):
+            with open(self.fpath, 'w') as f:
+                f.write('0.0')
 
     def set_score(self, score):
         if self.is_distributed:

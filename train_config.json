@@ -1,9 +1,9 @@
 {
-    "name": "CompressorGS",
+    "name": "TPS_online_GS",
     "gpu_list": [0,1,2,3],
 
     "arch": {
-        "type": "OnlinePSS",
+        "type": "TPS_online",
         "args": {}
     },
     "data_loader": {
@@ -47,13 +47,16 @@
     "loss": {
         "type": "OnlineKDLoss",
         "args": {
-            "base_gamma": 0.5,
-            "distillation_type": "soft_kl",
-            "distillation_from": "teacher",
-            "distillation_alpha": 0.5,
-            "distillation_tau": 1.5,
+            "logits_criterion": "soft_kl",
             "hidden_state_criterion": "mse",
-            "hidden_state_beta": 0.3
+            "s_alpha": 0.5,
+            "s_tau": 1.5,
+            "s_beta": 0.3,
+            "s_gamma": 0.5,
+            "p_alpha": 0.5,
+            "p_tau": 1.5,
+            "p_beta": 0.3,
+            "p_gamma": 0.5
         }
     },
     "metrics": [
@@ -67,7 +70,7 @@
         "warmup_epochs": 5
     },
     "trainer": {
-        "epochs": 50,
+        "epochs": 100,
         "val_freq": 1,
 
         "save_dir": "./../saved/",
@@ -75,7 +78,7 @@
         "verbosity": 2,
         
         "monitor": "min val_loss",
-        "early_stop": 3,
+        "early_stop": 2,
 
         "tensorboard": true
     }

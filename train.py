@@ -29,20 +29,28 @@ def main(config, trials=None):
 
     # Hyperparameter optimization
     if trials is not None:
-        config['optimizer']['args']['lr'] = trials.suggest_float('lr', 0.0001, 0.005)
-        #config['lr_scheduler']['min_lr'] = trials.suggest_float('min_lr', 0.00001, 0.0001)
+
+        config['data_loader']['args']['batch_size'] = trials.suggest_categorical('batch_size', [128, 256, 512])
+
+        config['optimizer']['args']['lr'] = trials.suggest_float('lr', 0.0001, 0.01)
         config['optimizer']['args']['weight_decay'] = trials.suggest_float('weight_decay', 0.05, 0.15)
 
         config['mixup']['label_smoothing'] = trials.suggest_float('label_smoothing', 0.0, 0.3)
 
-        config['loss']['args']['distillation_type'] = trials.suggest_categorical('l_type', ['soft_kl', 'soft_ce'])
-        config['loss']['args']['distillation_alpha'] = trials.suggest_float('l_alpha', 0.0, 3.0)
-        config['loss']['args']['distillation_tau'] = trials.suggest_float('tau', 0.1, 5.0)
+        config['loss']['args']['logits_criterion'] = trials.suggest_categorical('logits_crit', ['soft_kl', 'soft_ce'])
+        config['loss']['args']['hidden_state_criterion'] = trials.suggest_categorical('hidden_crit', ['mse', 'cosine'])
 
-        config['loss']['args']['hidden_state_criterion'] = trials.suggest_categorical('l_crit', ['mse', 'cosine'])
-        config['loss']['args']['hidden_state_beta'] = trials.suggest_float('l_beta', 0.0, 3.0)
+        config['loss']['args']['s_alpha'] = trials.suggest_float('s_alpha', 0.0, 1.0)
+        config['loss']['args']['p_alpha'] = trials.suggest_float('p_alpha', 0.0, 1.0)
 
-        config['loss']['args']['base_gamma'] = trials.suggest_float('base_gamma', 0.0, 3.0)
+        config['loss']['args']['s_tau'] = trials.suggest_float('s_tau', 1.0, 5.0)
+        config['loss']['args']['p_tau'] = trials.suggest_float('p_tau', 1.0, 5.0)
+
+        config['loss']['args']['s_beta'] = trials.suggest_float('s_beta', 0.0, 1.0)
+        config['loss']['args']['p_beta'] = trials.suggest_float('p_beta', 0.0, 1.0)
+
+        config['loss']['args']['s_gamma'] = trials.suggest_float('s_gamma', 0.0, 1.0)
+        config['loss']['args']['p_gamma'] = trials.suggest_float('p_gamma', 0.0, 1.0)
 
     n_gpus = len(config['gpu_list'])
     is_distributed = n_gpus > 1
@@ -59,7 +67,7 @@ def main(config, trials=None):
 
         try:
             torch.multiprocessing.spawn(main_worker_function, nprocs=n_gpus, args=(n_gpus, is_distributed, config, trials, scorer))
-        except torch.multiprocessing.ProcessRaisedException:
+        except torch.multiprocessing.ProcessRaisedException or optuna.TrialPruned:
             pass
     else:
         print("Not using multiprocessing...")
@@ -145,7 +153,7 @@ if __name__ == '__main__':
         pruner=optuna.pruners.MedianPruner()
         # pruner=optuna.pruners.PercentilePruner(25.0) # TODO: use percentile 25
     )
-    study.optimize(lambda trial: main(config, trial), n_trials=50)
+    study.optimize(lambda trial: main(config, trial), n_trials=40)
 
     # TODO: change destination
     fname = f'study_{config["name"]}.pkl'

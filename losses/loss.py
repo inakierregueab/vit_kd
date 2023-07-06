@@ -167,24 +167,59 @@ class OfflineKDLoss(BaseKDloss):
         return total_loss, base_loss, distill_loss, hidden_state_loss
 
 
-class OnlineKDLoss(BaseKDloss):
-    def __init__(self,
-                 base_gamma=0,
-                 distillation_type='none',
-                 distillation_from='teacher',
-                 distillation_alpha=0,
-                 distillation_tau=1,
-                 hidden_state_criterion='none',
-                 hidden_state_beta=0,
-                 rank=0):
-        super().__init__(distillation_type=distillation_type,
-                         distillation_from=distillation_from,
-                         distillation_alpha=distillation_alpha,
-                         distillation_tau=distillation_tau,
-                         hidden_state_criterion=hidden_state_criterion,
-                         hidden_state_beta=hidden_state_beta,
-                         rank=rank)
-        self.base_gamma = base_gamma
+class OnlineKDLoss(nn.Module):
+    def __init__(self, logits_criterion='none', hidden_state_criterion='none', s_gamma=0, s_alpha=0, s_tau=1, s_beta=0,
+                 p_gamma=0, p_alpha=0, p_tau=1, p_beta=0, rank=0):
+
+        super().__init__()
+        self.logits_criterion = logits_criterion
+        self.hidden_state_criterion = hidden_state_criterion
+
+        self.s_gamma = s_gamma
+        self.s_alpha = s_alpha
+        self.s_tau = s_tau
+        self.s_beta = s_beta
+
+        self.p_gamma = p_gamma
+        self.p_alpha = p_alpha
+        self.p_tau = p_tau
+        self.p_beta = p_beta
+
+        self.base_criterion = SoftTargetCrossEntropy()
+
+    def compute_distillation_loss(self, student_logits, teacher_logits, T=1):
+
+        if self.logits_criterion == 'soft_kl':
+            distill_loss = F.kl_div(
+                # Use LogSoftmax for numerical stability
+                F.log_softmax(student_logits / T, dim=1),
+                F.log_softmax(teacher_logits / T, dim=1),
+                reduction='batchmean',
+                log_target=True
+            ) * (T * T)
+
+        elif self.logits_criterion == 'soft_mse':
+            # More info: https://arxiv.org/pdf/2105.08919.pdf
+            distill_loss = F.mse_loss(student_logits, teacher_logits)
+
+        elif self.logits_criterion == 'hard':
+            distill_loss = F.cross_entropy(student_logits, teacher_logits.argmax(dim=1))
+
+        elif self.logits_criterion == 'soft_ce':
+            distill_loss = SoftTargetCrossEntropy()(student_logits, teacher_logits,
+                                                    temperature=T, t_is_prob=False)
+
+        return distill_loss
+
+    def compute_hidden_state_loss(self, student_hidden_states, teacher_hidden_states):
+
+        if self.hidden_state_criterion == 'mse':
+            hidden_state_loss = F.mse_loss(student_hidden_states, teacher_hidden_states)
+
+        elif self.hidden_state_criterion == 'cosine':
+            hidden_state_loss = 1 - F.cosine_similarity(student_hidden_states, teacher_hidden_states, dim=1).mean()
+
+        return hidden_state_loss
 
     def forward(self, outputs, target):
         """
@@ -203,23 +238,17 @@ class OnlineKDLoss(BaseKDloss):
         p_base_loss = self.base_criterion(proxy_logits, target)
 
         # Compute distillation loss
-        s_distill_loss = self.compute_distillation_loss(student_logits, teacher_logits)
-        p_distill_loss = self.compute_distillation_loss(proxy_logits, teacher_logits)
-        # TODO: Proxy logits can be distilled to student logits as well
+        s_distill_loss = self.compute_distillation_loss(student_logits, teacher_logits, T=self.s_tau)
+        p_distill_loss = self.compute_distillation_loss(proxy_logits, teacher_logits, T=self.p_tau)
 
         # Compute hidden state loss
         hidden_state_loss = self.compute_hidden_state_loss(student_hidden_states, proxy_hidden_states)
 
         # Student loss
-        s_total_loss = s_base_loss * self.base_gamma + s_distill_loss * self.distillation_alpha +\
-                       hidden_state_loss * self.hidden_state_beta
+        s_total_loss = s_base_loss * self.s_gamma + s_distill_loss * self.s_alpha + hidden_state_loss * self.s_beta
 
         # Proxy loss
-        """p_total_loss = p_base_loss * (1-self.distillation_alpha-self.hidden_state_beta) + \
-                            p_distill_loss * self.distillation_alpha + \
-                            hidden_state_loss * self.hidden_state_beta"""
-
-        p_total_loss = p_base_loss * 0.1 + p_distill_loss * 0.9
+        p_total_loss = p_base_loss * self.p_gamma + p_distill_loss * self.p_alpha + hidden_state_loss * self.p_beta
 
         # Compute total loss
         # TODO: We can add a weight to the proxy loss

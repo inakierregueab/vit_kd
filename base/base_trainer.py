@@ -84,7 +84,8 @@ class BaseTrainer:
                 score = log['val_loss']
                 self.trial.report(score, epoch)
                 if self.trial.should_prune():
-                    raise optuna.TrialPruned()
+                    # TODO: review if now it works!
+                    raise optuna.exceptions.TrialPruned()
 
                 # evaluate model performance according to configured metric, save best checkpoint as model_best
                 best = False

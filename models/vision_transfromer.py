@@ -361,7 +361,8 @@ class VisionTransformer(nn.Module):
                 memory: Optional[torch.Tensor] = None,
                 output_hidden: bool = False,
                 output_att: bool = False,
-                average_att: bool = False
+                average_att: bool = False,
+                should_resize: bool = False
                 ):
         """
         Arguments:
@@ -377,7 +378,8 @@ class VisionTransformer(nn.Module):
         """
 
         # Reshape and permute the input tensor
-        x = self.resize(x)
+        if should_resize:
+            x = self.resize(x)
         x = self._process_input(x)
         n = x.shape[0]
 

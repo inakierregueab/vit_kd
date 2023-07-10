@@ -8,42 +8,28 @@ from losses.softCE import SoftTargetCrossEntropy
 
 
 class BaseKDloss(nn.Module):
-    def __init__(self,
-                 distillation_type='none',
-                 distillation_from='teacher',
-                 distillation_alpha=0,
-                 distillation_tau=1,
-                 hidden_state_criterion='none',
-                 hidden_state_beta=0,
-                 rank=0):
+    def __init__(self, logits_criterion='none', hidden_state_criterion='none', gamma=0, alpha=0, tau=1, beta=0, rank=0):
         super().__init__()
 
         self.base_criterion = SoftTargetCrossEntropy()
 
-        assert distillation_type in ['soft_kl', 'soft_mse', 'soft_ce', 'hard']
-        self.distillation_type = distillation_type
-
-        assert distillation_from in ['teacher', 'proxy', 'both']
-        self.distillation_from = distillation_from
-
-        self.distillation_alpha = distillation_alpha
-        self.distillation_tau = distillation_tau
-
-        if rank == 0:
-            print(f'Distillation type is {distillation_type} from {distillation_from} logits,'
-                  f' with alpha={distillation_alpha} and tau={distillation_tau}')
+        assert logits_criterion in ['soft_kl', 'soft_mse', 'soft_ce', 'hard']
+        self.logits_criterion = logits_criterion
+        self.alpha = alpha
+        self.tau = tau
 
         assert hidden_state_criterion in ['mse', 'cosine']
         self.hidden_state_criterion = hidden_state_criterion
-        self.hidden_state_beta = hidden_state_beta
+        self.hidden_state_beta = beta
 
         if rank == 0:
-            print(f'Hidden state criterion is {hidden_state_criterion} with beta={hidden_state_beta}')
+            print(f'Base criterion is {self.base_criterion} with gamma={gamma}')
+            print(f'Distillation crit is {logits_criterion} in logits, with alpha={alpha} and tau={tau}')
+            print(f'Hidden state criterion is {hidden_state_criterion} with beta={beta}')
 
-    def compute_distillation_loss(self, student_logits, teacher_logits):
+    def compute_distillation_loss(self, student_logits, teacher_logits, T=1):
 
-        if self.distillation_type == 'soft_kl':
-            T = self.distillation_tau
+        if self.logits_criterion == 'soft_kl':
             distill_loss = F.kl_div(
                 # Use LogSoftmax for numerical stability
                 F.log_softmax(student_logits / T, dim=1),
@@ -52,16 +38,15 @@ class BaseKDloss(nn.Module):
                 log_target=True
             ) * (T * T)
 
-        elif self.distillation_type == 'soft_mse':
+        elif self.logits_criterion == 'soft_mse':
             # More info: https://arxiv.org/pdf/2105.08919.pdf
             distill_loss = F.mse_loss(student_logits, teacher_logits)
 
-        elif self.distillation_type == 'hard':
+        elif self.logits_criterion == 'hard':
             distill_loss = F.cross_entropy(student_logits, teacher_logits.argmax(dim=1))
 
-        elif self.distillation_type == 'soft_ce':
-            distill_loss = SoftTargetCrossEntropy()(student_logits, teacher_logits,
-                                                    temperature=self.distillation_tau, t_is_prob=False)
+        elif self.logits_criterion == 'soft_ce':
+            distill_loss = SoftTargetCrossEntropy()(student_logits, teacher_logits, temperature=T, t_is_prob=False)
 
         return distill_loss
 
@@ -81,21 +66,14 @@ class BaseKDloss(nn.Module):
 
 
 class ProxyKDLoss(BaseKDloss):
-    def __init__(self,
-                 distillation_type='none',
-                 distillation_from='teacher',
-                 distillation_alpha=0,
-                 distillation_tau=1,
-                 hidden_state_criterion='none',
-                 hidden_state_beta=0,
-                 rank=0):
-        super().__init__(distillation_type=distillation_type,
-              distillation_from=distillation_from,
-              distillation_alpha=distillation_alpha,
-              distillation_tau=distillation_tau,
-              hidden_state_criterion=hidden_state_criterion,
-              hidden_state_beta=hidden_state_beta,
-              rank=rank)
+    def __init__(self, logits_criterion='none', hidden_state_criterion='none', gamma=0, alpha=0, tau=1, beta=0, rank=0):
+        super().__init__(logits_criterion=logits_criterion,
+                         hidden_state_criterion=hidden_state_criterion,
+                         gamma=gamma,
+                         alpha=alpha,
+                         tau=tau,
+                         beta=beta,
+                         rank=rank)
 
     def forward(self, outputs, target):
         """
@@ -108,34 +86,26 @@ class ProxyKDLoss(BaseKDloss):
         proxy_logits, proxy_hidden_states, proxy_attention_weights = outputs[0]
         teacher_logits, teacher_hidden_states, teacher_attention_weights = outputs[1]
 
-
         # Compute base criterion
         base_loss = self.base_criterion(proxy_logits, target)
 
         # Compute distillation loss
-        distill_loss = self.compute_distillation_loss(proxy_logits, teacher_logits)
+        distill_loss = self.compute_distillation_loss(proxy_logits, teacher_logits, T=self.tau)
 
         # Compute total loss
-        total_loss = base_loss * (1 - self.distillation_alpha) + distill_loss * self.distillation_alpha
+        total_loss = base_loss * self.gamma + distill_loss * self.distillation_alpha
 
         return total_loss, base_loss, distill_loss, 0
 
 
 class OfflineKDLoss(BaseKDloss):
-    def __init__(self,
-                 distillation_type='none',
-                 distillation_from='teacher',
-                 distillation_alpha=0,
-                 distillation_tau=1,
-                 hidden_state_criterion='none',
-                 hidden_state_beta=0,
-                 rank=0):
-        super().__init__(distillation_type=distillation_type,
-                         distillation_from=distillation_from,
-                         distillation_alpha=distillation_alpha,
-                         distillation_tau=distillation_tau,
+    def __init__(self, logits_criterion='none', hidden_state_criterion='none', gamma=0, alpha=0, tau=1, beta=0, rank=0):
+        super().__init__(logits_criterion=logits_criterion,
                          hidden_state_criterion=hidden_state_criterion,
-                         hidden_state_beta=hidden_state_beta,
+                         gamma=gamma,
+                         alpha=alpha,
+                         tau=tau,
+                         beta=beta,
                          rank=rank)
 
     def forward(self, outputs, target):
@@ -154,14 +124,13 @@ class OfflineKDLoss(BaseKDloss):
         base_loss = self.base_criterion(student_logits, target)
 
         # Compute distillation loss
-        distill_loss = self.compute_distillation_loss(student_logits, teacher_logits)
+        distill_loss = self.compute_distillation_loss(student_logits, teacher_logits, T=self.tau)
 
         # Compute hidden state loss
         hidden_state_loss = self.compute_hidden_state_loss(student_hidden_states, proxy_hidden_states)
 
         # Compute total loss
-        total_loss = base_loss * (1-self.distillation_alpha-self.hidden_state_beta) + \
-                     distill_loss * self.distillation_alpha + \
+        total_loss = base_loss * self.gamma + distill_loss * self.distillation_alpha + \
                      hidden_state_loss * self.hidden_state_beta
 
         return total_loss, base_loss, distill_loss, hidden_state_loss
@@ -250,28 +219,15 @@ class OnlineKDLoss(nn.Module):
         # Proxy loss
         p_total_loss = p_base_loss * self.p_gamma + p_distill_loss * self.p_alpha + hidden_state_loss * self.p_beta
 
-        # Compute total loss
-        # TODO: We can add a weight to the proxy loss
+        # Compute total loss¡
         total_loss = s_total_loss + p_total_loss
 
         return total_loss, s_base_loss, s_distill_loss, hidden_state_loss
 
 class StudentKDLoss(BaseKDloss):
-    def __init__(self,
-                 distillation_type='none',
-                 distillation_from='teacher',
-                 distillation_alpha=0,
-                 distillation_tau=1,
-                 hidden_state_criterion='none',
-                 hidden_state_beta=0,
-                 rank=0):
-        super().__init__(distillation_type=distillation_type,
-                         distillation_from=distillation_from,
-                         distillation_alpha=distillation_alpha,
-                         distillation_tau=distillation_tau,
-                         hidden_state_criterion=hidden_state_criterion,
-                         hidden_state_beta=hidden_state_beta,
-                         rank=rank)
+    def __init__(self, logits_criterion='none', hidden_state_criterion='none', gamma=0, alpha=0, tau=1, beta=0, rank=0):
+        super().__init__(logits_criterion=logits_criterion, hidden_state_criterion=hidden_state_criterion,
+                         gamma=gamma, alpha=alpha, tau=tau, beta=beta, rank=rank)
 
     def forward(self, outputs, target):
         """
@@ -288,14 +244,13 @@ class StudentKDLoss(BaseKDloss):
         s_base_loss = self.base_criterion(student_logits, target)
 
         # Compute distillation loss
-        s_distill_loss = self.compute_distillation_loss(student_logits, teacher_logits)
+        s_distill_loss = self.compute_distillation_loss(student_logits, teacher_logits, T=self.tau)
 
         # Compute hidden state loss
         hidden_state_loss = self.compute_hidden_state_loss(student_hidden_states, teacher_hidden_states)
 
         # Student loss
-        total_loss = s_base_loss * (1-self.distillation_alpha-self.hidden_state_beta) + \
-                          s_distill_loss * self.distillation_alpha + \
-                            hidden_state_loss * self.hidden_state_beta
+        total_loss = s_base_loss * self.gamma + s_distill_loss * self.distillation_alpha + \
+                     hidden_state_loss * self.hidden_state_beta
 
         return total_loss, s_base_loss, s_distill_loss, hidden_state_loss

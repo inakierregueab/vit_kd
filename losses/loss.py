@@ -12,10 +12,11 @@ class BaseKDloss(nn.Module):
         super().__init__()
 
         self.base_criterion = SoftTargetCrossEntropy()
+        self.base_gamma = gamma
 
         assert logits_criterion in ['soft_kl', 'soft_mse', 'soft_ce', 'hard']
         self.logits_criterion = logits_criterion
-        self.alpha = alpha
+        self.logits_alpha = alpha
         self.tau = tau
 
         assert hidden_state_criterion in ['mse', 'cosine']
@@ -93,7 +94,7 @@ class ProxyKDLoss(BaseKDloss):
         distill_loss = self.compute_distillation_loss(proxy_logits, teacher_logits, T=self.tau)
 
         # Compute total loss
-        total_loss = base_loss * self.gamma + distill_loss * self.distillation_alpha
+        total_loss = base_loss * self.base_gamma + distill_loss * self.logits_alpha
 
         return total_loss, base_loss, distill_loss, 0
 
@@ -130,7 +131,7 @@ class OfflineKDLoss(BaseKDloss):
         hidden_state_loss = self.compute_hidden_state_loss(student_hidden_states, proxy_hidden_states)
 
         # Compute total loss
-        total_loss = base_loss * self.gamma + distill_loss * self.distillation_alpha + \
+        total_loss = base_loss * self.base_gamma + distill_loss * self.logits_alpha + \
                      hidden_state_loss * self.hidden_state_beta
 
         return total_loss, base_loss, distill_loss, hidden_state_loss
@@ -250,7 +251,7 @@ class StudentKDLoss(BaseKDloss):
         hidden_state_loss = self.compute_hidden_state_loss(student_hidden_states, teacher_hidden_states)
 
         # Student loss
-        total_loss = s_base_loss * self.gamma + s_distill_loss * self.distillation_alpha + \
+        total_loss = s_base_loss * self.base_gamma + s_distill_loss * self.logits_alpha + \
                      hidden_state_loss * self.hidden_state_beta
 
         return total_loss, s_base_loss, s_distill_loss, hidden_state_loss

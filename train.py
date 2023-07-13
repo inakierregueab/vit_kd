@@ -151,7 +151,7 @@ if __name__ == '__main__':
         direction='minimize',
         sampler=optuna.samplers.TPESampler(seed=123),
         #pruner=optuna.pruners.MedianPruner()
-        pruner=optuna.pruners.PercentilePruner(25.0)
+        pruner=optuna.pruners.PercentilePruner(25.0, n_startup_trials=3)
     )
     study.optimize(lambda trial: main(config, trial), n_trials=30)
 

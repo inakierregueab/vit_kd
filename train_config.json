@@ -3,7 +3,7 @@
     "gpu_list": [0,1,2,3],
 
     "arch": {
-        "type": "TS",
+        "type": "TP",
         "args": {}
     },
     "data_loader": {
@@ -45,7 +45,7 @@
         }
     },
     "loss": {
-        "type": "StudentKDLoss",
+        "type": "ProxyKDLoss",
         "args": {
             "logits_criterion": "soft_kl",
             "hidden_state_criterion": "cosine",

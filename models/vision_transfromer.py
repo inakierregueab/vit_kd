@@ -381,6 +381,9 @@ class VisionTransformer(nn.Module):
         batch_class_token = self.class_token.expand(n, -1, -1)
         x = torch.cat([batch_class_token, x], dim=1)
 
+        # Perform masking
+        #x = self.mask_tokens(x)
+
         x, A = self.encoder(x, memory=memory, output_att=output_att, average_att=average_att)
 
         # Classifier "token" as used by standard language architectures
@@ -396,6 +399,20 @@ class VisionTransformer(nn.Module):
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
         params = sum([np.prod(p.size()) for p in model_parameters])
         return super().__str__() + '\nTrainable parameters: {}'.format(params)
+
+    """def mask_tokens(self, inputs: torch.Tensor, masking_prob=0.15):
+        bs, seq_length, hidden_dim = inputs.shape
+
+        # Create a mask of 0s and 1s where 1s are the indices to be masked
+        mask_arr = torch.rand(bs, seq_length) < masking_prob
+        mask_arr[:, 0] = False    # Never mask the class token
+
+        # Substitute the indices (bs, seq_length) to be masked in the input tensor (bs, seq_length, hidden_dim)
+        # with parameterized zeros of shape (1, 1, hidden_dim)
+        masked_inputs = inputs.clone()
+        masked_inputs[mask_arr.unsqueeze(-1).expand(-1, -1, hidden_dim)] = nn.Parameter(torch.zeros(1, 1, hidden_dim))
+
+        return masked_inputs, mask_arr"""
 
 
 # Testing unit

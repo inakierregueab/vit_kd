@@ -37,8 +37,8 @@ def main(config, trials=None):
 
         config['mixup']['label_smoothing'] = trials.suggest_float('label_smoothing', 0.0, 0.3)
 
-        config['loss']['args']['logits_criterion'] = trials.suggest_categorical('logits_crit', ['soft_kl', 'soft_ce'])
-        config['loss']['args']['hidden_state_criterion'] = trials.suggest_categorical('hidden_crit', ['mse', 'cosine'])
+        #config['loss']['args']['logits_criterion'] = trials.suggest_categorical('logits_crit', ['soft_kl', 'soft_ce'])
+        #config['loss']['args']['hidden_state_criterion'] = trials.suggest_categorical('hidden_crit', ['mse', 'cosine'])
 
         config['loss']['args']['s_alpha'] = trials.suggest_float('s_alpha', 0.0, 1.0)
         #config['loss']['args']['p_alpha'] = trials.suggest_float('p_alpha', 0.0, 1.0)
@@ -46,7 +46,7 @@ def main(config, trials=None):
         config['loss']['args']['s_tau'] = trials.suggest_float('s_tau', 1.0, 5.0)
         #config['loss']['args']['p_tau'] = trials.suggest_float('p_tau', 1.0, 5.0)
 
-        config['loss']['args']['s_beta'] = trials.suggest_float('s_beta', 0.0, 1.0)
+        #config['loss']['args']['s_beta'] = trials.suggest_float('s_beta', 0.0, 1.0)
         #config['loss']['args']['p_beta'] = trials.suggest_float('p_beta', 0.0, 1.0)
 
         config['loss']['args']['s_gamma'] = trials.suggest_float('s_gamma', 0.0, 1.0)
@@ -151,9 +151,9 @@ if __name__ == '__main__':
         direction='minimize',
         sampler=optuna.samplers.TPESampler(seed=123),
         #pruner=optuna.pruners.MedianPruner()
-        pruner=optuna.pruners.PercentilePruner(25.0, n_startup_trials=3)
+        pruner=optuna.pruners.PercentilePruner(10.0, n_startup_trials=3)
     )
-    study.optimize(lambda trial: main(config, trial), n_trials=30)
+    study.optimize(lambda trial: main(config, trial), n_trials=15)
 
     # TODO: change destination
     fname = f'study_{config["name"]}.pkl'

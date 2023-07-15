@@ -67,13 +67,13 @@ class BaseKDloss(nn.Module):
 
 
 class ProxyKDLoss(BaseKDloss):
-    def __init__(self, logits_criterion='none', hidden_state_criterion='none', gamma=0, alpha=0, tau=1, beta=0, rank=0):
+    def __init__(self, logits_criterion='none', hidden_state_criterion='none', s_gamma=0, s_alpha=0, s_tau=1, s_beta=0, rank=0):
         super().__init__(logits_criterion=logits_criterion,
                          hidden_state_criterion=hidden_state_criterion,
-                         gamma=gamma,
-                         alpha=alpha,
-                         tau=tau,
-                         beta=beta,
+                         gamma=s_gamma,
+                         alpha=s_alpha,
+                         tau=s_tau,
+                         beta=s_beta,
                          rank=rank)
 
     def forward(self, outputs, target):

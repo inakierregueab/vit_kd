@@ -48,10 +48,16 @@ class ProxyEncoderBlock(nn.Module):
                 average_att: bool = False,
                 ):
 
+        # generate the attention mask of shape (seq_length, seq_length) for the cross attention sampling from a uniform distribution with probability p
+        # infer rank of input
+        device = input.device
+        attn_mask = torch.rand(input.shape[1], input.shape[1], device=device) < 0.75
+
         torch._assert(input.dim() == 3, f"Expected (batch_size, seq_length, hidden_dim) got {input.shape}")
         x = input
         x = self.ln_1(x)
-        x, A = self.cross_attention(query=x, key=memory, value=memory, need_weights=output_att, average_attn_weights=average_att)
+        x, A = self.cross_attention(query=x, key=memory, value=memory, need_weights=output_att,
+                                    average_attn_weights=average_att, attn_mask=attn_mask)
         x = self.dropout(x)
         x = x + input
 

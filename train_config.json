@@ -1,5 +1,5 @@
 {
-    "name": "TS",
+    "name": "proxy",
     "gpu_list": [0,1,2,3],
 
     "arch": {
@@ -10,7 +10,7 @@
         "type": "IMNETDataLoader",
         "args":{
             "data_dir": "./../data/",
-            "batch_size": 128,
+            "batch_size": 512,
             "num_workers": 8,
             "pin_memory": true,
             "persistent_workers": true,
@@ -33,15 +33,15 @@
         "prob": 1.0,
         "switch_prob": 0.5,
         "mode": "batch",
-        "label_smoothing": 0.29,
+        "label_smoothing": 0.0,
         "num_classes": 1000
     },
     "optimizer": {
         "type": "AdamW",
         "args":{
-            "lr": 8.5e-3,
+            "lr": 1e-2,
             "betas": [0.9,0.999],
-            "weight_decay": 0.086
+            "weight_decay": 0.06
         }
     },
     "loss": {
@@ -49,10 +49,10 @@
         "args": {
             "logits_criterion": "soft_kl",
             "hidden_state_criterion": "cosine",
-            "s_alpha": 0.69,
-            "s_tau": 1.64,
+            "s_alpha": 0.5,
+            "s_tau": 1.5,
             "s_beta": 0.98,
-            "s_gamma": 0.21
+            "s_gamma": 0.5
         }
     },
     "metrics": [
@@ -66,11 +66,11 @@
         "warmup_epochs": 5
     },
     "trainer": {
-        "epochs": 100,
+        "epochs": 50,
         "val_freq": 1,
 
         "save_dir": "./../saved/",
-        "save_period": 100,
+        "save_period": 2,
         "verbosity": 2,
         
         "monitor": "min val_loss",

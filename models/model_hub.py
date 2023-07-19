@@ -102,13 +102,13 @@ class TPS_offline(nn.Module):
     def __init__(self):
         super().__init__()
         self.teacher_proxy = TP()
-        checkpoint = torch.load('./../../saved/weights/proxy_kl/checkpoint-epoch60.pth',
+        checkpoint = torch.load('./../../saved/models/proxy/0717_055017/checkpoint-epoch18.pth',
                                 map_location=torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu'))
         self.teacher_proxy.load_state_dict(checkpoint['state_dict'])
         for param in self.teacher_proxy.parameters():
             param.requires_grad = False
 
-        self.student = DeiT_S16()
+        self.student = DeiT_Ti16()
 
     def forward(self, x):
         with torch.no_grad():

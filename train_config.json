@@ -1,9 +1,9 @@
 {
-    "name": "proxy_gs",
+    "name": "offline_gs",
     "gpu_list": [0,1,2,3],
 
     "arch": {
-        "type": "TP",
+        "type": "TPS_offline",
         "args": {}
     },
     "data_loader": {
@@ -45,7 +45,7 @@
         }
     },
     "loss": {
-        "type": "ProxyKDLoss",
+        "type": "OfflineKDLoss",
         "args": {
             "logits_criterion": "soft_kl",
             "hidden_state_criterion": "cosine",
@@ -66,7 +66,7 @@
         "warmup_epochs": 5
     },
     "trainer": {
-        "epochs": 50,
+        "epochs": 100,
         "val_freq": 1,
 
         "save_dir": "./../saved/",

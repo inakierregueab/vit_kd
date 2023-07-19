@@ -46,7 +46,7 @@ def main(config, trials=None):
         config['loss']['args']['s_tau'] = trials.suggest_float('s_tau', 1.0, 5.0)
         #config['loss']['args']['p_tau'] = trials.suggest_float('p_tau', 1.0, 5.0)
 
-        #config['loss']['args']['s_beta'] = trials.suggest_float('s_beta', 0.0, 1.0)
+        config['loss']['args']['s_beta'] = trials.suggest_float('s_beta', 0.0, 1.0)
         #config['loss']['args']['p_beta'] = trials.suggest_float('p_beta', 0.0, 1.0)
 
         config['loss']['args']['s_gamma'] = trials.suggest_float('s_gamma', 0.0, 1.0)

@@ -14,6 +14,15 @@ class ModVisionTransformer(VisionTransformer):
         x = self._process_input(x)
         n = x.shape[0]
 
+        # TODO: teacher token mask
+        # Mask to 0 some class tokens chosen at random
+        #create a random matrix of size (n, seq_length) with values in [0,1]
+        device = x.device
+        mask = torch.rand(n, self.seq_length -1, device=device) < 0.50
+        mask = mask[:,:,None].expand(-1,-1,self.hidden_dim).bool()
+        # use the mask to set to 0 the correspondent tokens of x
+        x[mask] = 0
+
         # Expand the class token to the full batch
         batch_class_token = self.class_token.expand(n, -1, -1)
         x = torch.cat([batch_class_token, x], dim=1)

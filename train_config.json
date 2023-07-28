@@ -1,9 +1,9 @@
 {
-    "name": "offline",
+    "name": "mask",
     "gpu_list": [0,1,2,3],
 
     "arch": {
-        "type": "TPS_offline",
+        "type": "TPS_online",
         "args": {}
     },
     "data_loader": {
@@ -39,20 +39,24 @@
     "optimizer": {
         "type": "AdamW",
         "args":{
-            "lr": 0.004,
+            "lr": 0.005,
             "betas": [0.9,0.999],
-            "weight_decay": 0.14
+            "weight_decay": 0.05
         }
     },
     "loss": {
-        "type": "OfflineKDLoss",
+        "type": "OnlineKDLoss",
         "args": {
             "logits_criterion": "soft_kl",
             "hidden_state_criterion": "cosine",
-            "s_alpha": 0.35,
-            "s_tau": 1.2,
-            "s_beta": 0.3,
-            "s_gamma": 0.4
+            "s_alpha": 0.6,
+            "p_alpha": 0.15,
+            "s_tau": 1.5,
+            "p_tau": 3.0,
+            "s_beta": 0.9,
+            "p_beta": 0.2,
+            "s_gamma": 0.5,
+            "p_gamma": 0.15
         }
     },
     "metrics": [
@@ -70,7 +74,7 @@
         "val_freq": 1,
 
         "save_dir": "./../saved/",
-        "save_period": 2,
+        "save_period": 1000,
         "verbosity": 2,
         
         "monitor": "min val_loss",

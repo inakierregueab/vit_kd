@@ -48,6 +48,7 @@ class ProxyEncoderBlock(nn.Module):
                 average_att: bool = False,
                 ):
 
+        # TODO: CA mask
         # generate the attention mask of shape (seq_length, seq_length) for the cross attention sampling from a uniform distribution with probability p
         # infer rank of input
         device = input.device
@@ -281,6 +282,10 @@ class VisionTransformer(nn.Module):
         self.class_token = nn.Parameter(torch.zeros(1, 1, hidden_dim))
         seq_length += 1
 
+        # Add mask token
+        # TODO: only when learnable masking
+        #self.mask_token = nn.Parameter(torch.zeros(1, 1, hidden_dim))
+
         if self_proxy is False:
             self.encoder = modEncoder(
                 seq_length,
@@ -382,6 +387,21 @@ class VisionTransformer(nn.Module):
         # Reshape and permute the input tensor
         x = self._process_input(x)
         n = x.shape[0]
+
+        # TODO: teacher token mask
+        # Mask to 0 some class tokens chosen at random
+        # create a random matrix of size (n, seq_length) with values in [0,1]
+        device = x.device
+        mask = torch.rand(n, self.seq_length - 1, device=device) < 0.25
+
+        mask = mask[:, :, None].expand(-1, -1, self.hidden_dim).bool()
+        # use the mask to set to 0 the correspondent tokens of x
+        x[mask] = 0
+
+        # TODO: learnable masking
+        # Use mask to insert the learnable mask tokens in the input
+        #x[mask, :] = self.mask_token
+
 
         # Expand the class token to the full batch
         batch_class_token = self.class_token.expand(n, -1, -1)

@@ -93,7 +93,7 @@ class TP(nn.Module):
             t_output = self.teacher(x)
 
         #s_output = self.proxy_student(x, t_output[1], output_hidden=True, output_att=True, average_att=True)
-        s_output = self.proxy_student(x, t_output[1], output_hidden=True)
+        s_output = self.proxy_student(x, t_output[1], output_hidden=True, should_resize=True)
         return s_output, t_output, 0
 
 
@@ -114,7 +114,7 @@ class TPS_offline(nn.Module):
         with torch.no_grad():
             p_output, t_output, _ = self.teacher_proxy(x)
 
-        s_output = self.student(x, output_hidden=True)
+        s_output = self.student(x, output_hidden=True, should_resize=True)
         return s_output, t_output, p_output
 
 
@@ -133,8 +133,8 @@ class TPS_online(nn.Module):
         with torch.no_grad():
             t_output = self.teacher(x)
 
-        p_output = self.proxy(x, t_output[1], output_hidden=True)
-        s_output = self.student(x, output_hidden=True)
+        p_output = self.proxy(x, t_output[1], output_hidden=True, should_resize=True)
+        s_output = self.student(x, output_hidden=True, should_resize=True)
         return s_output, t_output, p_output
 
 
@@ -145,13 +145,15 @@ class TS(nn.Module):
         self.teacher = Teacher_ViTB16()
         self.student = DeiT_Ti16()
         self.mlp = nn.Linear(in_features=192, out_features=768)
+        self.mlp2 = nn.Linear(in_features=self.student.seq_length, out_features=self.teacher.model.seq_length)
 
     def forward(self, x):
         with torch.no_grad():
             t_output = self.teacher(x)
 
-        cls_token, hidden, matrix = self.student(x, output_hidden=True)
+        cls_token, hidden, matrix = self.student(x, output_hidden=True, should_resize=True)
         hidden = self.mlp(hidden)
+        hidden = self.mlp2(hidden.permute(0, 2, 1)).permute(0, 2, 1)
         return (cls_token, hidden, matrix), t_output, 0
 
 
@@ -226,16 +228,16 @@ if __name__ == "__main__":
     assert online_params == proxy_params + student_params
 
     self_proxy = SelfProxyStudent_S16()
-    s_out = self_proxy(x, memory, output_hidden=True, output_att=True, average_att=True)
+    s_out = self_proxy(x, memory, output_hidden=True, output_att=True, average_att=True, should_resize=True)
 
     # 10. Self proxy outputs (cls_token, x, A)
     assert len(s_out) == 3
     # 11. cls_token is a tensor of shape (bs, num_classes)
     assert s_out[0].shape == (bs, num_classes)
     # 12. x is a tensor of shape (bs, seq_length, hidden_dim)
-    assert s_out[1].shape == (bs, seq_length, s_hidden_dim)
+    assert s_out[1].shape == (bs, 65, s_hidden_dim)
     # 13. A is a tensor of shape (bs, seq_length, seq_length)
-    assert s_out[2].shape == (bs, seq_length, seq_length)
+    assert s_out[2].shape == (bs, 65, 65)
     # 14. Less params requiring grad than proxy student but more than student
     self_proxy_parameters = filter(lambda p: p.requires_grad, self_proxy.parameters())
     self_proxy_params = sum([np.prod(p.size()) for p in self_proxy_parameters])

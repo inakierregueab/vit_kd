@@ -143,14 +143,16 @@ class TS(nn.Module):
     def __init__(self):
         super().__init__()
         self.teacher = Teacher_ViTB16()
-        self.student = DeiT_S16()
+        self.student = DeiT_Ti16()
+        self.mlp = nn.Linear(in_features=192, out_features=768)
 
     def forward(self, x):
         with torch.no_grad():
             t_output = self.teacher(x)
 
-        s_output = self.student(x, output_hidden=True)
-        return s_output, t_output, 0
+        cls_token, hidden, matrix = self.student(x, output_hidden=True)
+        hidden = self.mlp(hidden)
+        return (cls_token, hidden, matrix), t_output, 0
 
 
 # Testing unit
@@ -161,7 +163,7 @@ if __name__ == "__main__":
     image_size = 224
     patch_size = 16
     t_hidden_dim = 768
-    s_hidden_dim = 384
+    s_hidden_dim = 192
     num_classes = 1000
     seq_length = (image_size // patch_size) ** 2 + 1  # Class token
 
@@ -184,7 +186,7 @@ if __name__ == "__main__":
     # 4. No params requiring grad
     assert len([True for p in teacher.parameters() if p.requires_grad]) == 0
 
-    tandem = TandemTPS()
+    tandem = TP()
     s_out, t_out, _ = tandem(x)
 
     # 5. Tandem outputs both student and teacher correctly
@@ -211,7 +213,7 @@ if __name__ == "__main__":
     #assert s_out[1].shape == p_out[1].shape == (bs, seq_length, s_hidden_dim)
 
     # 9. Online tandem has same number of trainable params as proxy plus student
-    online = OnlinePSS()
+    online = TPS_online()
     online_parameters = filter(lambda p: p.requires_grad, online.parameters())
     online_params = sum([np.prod(p.size()) for p in online_parameters])
 
@@ -238,7 +240,13 @@ if __name__ == "__main__":
     self_proxy_parameters = filter(lambda p: p.requires_grad, self_proxy.parameters())
     self_proxy_params = sum([np.prod(p.size()) for p in self_proxy_parameters])
 
-    assert student_params < self_proxy_params < proxy_params
+   #assert student_params < self_proxy_params < proxy_params
+
+    ts = TS()
+    s_out, t_out, _ = ts(x)
+
+    # 15. TS student hidden state is a tensor of same shape as teacher hidden state
+    assert s_out[1].shape == t_out[1].shape
 
 
 

@@ -71,7 +71,7 @@ class Trainer(BaseTrainer):
                 dist.reduce(loss, dst=0, op=dist.ReduceOp.AVG)      # AVG loss across all GPUs
                 dist.reduce(base_loss, dst=0, op=dist.ReduceOp.AVG)
                 dist.reduce(dist_loss, dst=0, op=dist.ReduceOp.AVG)
-                #dist.reduce(hidden_loss, dst=0, op=dist.ReduceOp.AVG)
+                dist.reduce(hidden_loss, dst=0, op=dist.ReduceOp.AVG)
 
             metrics = {}
             for met in self.metric_ftns:
